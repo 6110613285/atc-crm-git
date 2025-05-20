@@ -31,6 +31,7 @@ import Locationmanage from "./Stockpage/locationmanage";
 import ReceivePart from "./Stockpage/Receivepart";
 import LogHistory from "./Stockpage/log";
 import BorrowPage from "./Stockpage/borrowpage";
+import Bucket from "./Stockpage/bucket";
 
 
 
@@ -108,6 +109,7 @@ function App() {
             <Route path="/Receive" element={<ReceivePart />}></Route>
             <Route path="/logs" element={<LogHistory />}></Route>
             <Route path="/Borrow" element={<BorrowPage />}></Route>
+            <Route path="/Bucket" element={<Bucket />}></Route>
 
             <Route
               path="/SelectedCompany"
