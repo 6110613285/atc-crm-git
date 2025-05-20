@@ -2,17 +2,19 @@ import React, { useState, useEffect, useRef } from "react";
 import { FormControl, Button, Table, Tabs, Tab, Card, Badge, Container, Alert } from "react-bootstrap";
 import PaginationComponent from "../components/PaginationComponent";
 import Addlo from "../Stockpage/Addlocation";
+import EditModal from "../Stockpage/EditModal";
 import Addstore from "../Stockpage/addstore";
-import { 
-  Search, 
-  XCircle, 
-  Trash, 
-  Plus, 
-  GeoAltFill, 
-  BoxSeamFill, 
-  CalendarDate, 
-  InfoCircle, 
-  Building
+import {
+  Search,
+  XCircle,
+  Trash,
+  Plus,
+  GeoAltFill,
+  BoxSeamFill,
+  CalendarDate,
+  InfoCircle,
+  Building,
+  Pencil
 } from "react-bootstrap-icons";
 
 function Locationmanage() {
@@ -20,17 +22,17 @@ function Locationmanage() {
   const [locations, setLocations] = useState([]);
   const [stores, setStores] = useState([]);
   const [activeTab, setActiveTab] = useState("locations");
-  
+
   // สถานะสำหรับตาราง Location
   const [currentLocationPageData, setCurrentLocationPageData] = useState([]);
   const [currentLocationPage, setCurrentLocationPage] = useState(1);
-  
+
   // สถานะสำหรับตาราง Store
   const [currentStorePageData, setCurrentStorePageData] = useState([]);
   const [currentStorePage, setCurrentStorePage] = useState(1);
-  
+
   const itemsPerPage = 15;
-  
+
   // ฟังก์ชันดึงข้อมูลสถานที่
   const getLocations = async () => {
     try {
@@ -89,13 +91,12 @@ function Locationmanage() {
       setStores([]);
     }
   };
-  
+
   // ฟังก์ชันค้นหาสถานที่
   const searchLocations = async () => {
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_SERVER}/Store.php?action=searchLo&search=${
-          searchRef.current.value || ""
+        `${import.meta.env.VITE_SERVER}/Store.php?action=searchLo&search=${searchRef.current.value || ""
         }`,
         {
           method: "GET",
@@ -126,8 +127,7 @@ function Locationmanage() {
   const searchStores = async () => {
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_SERVER}/Store.php?action=searchStore&search=${
-          searchRef.current.value || ""
+        `${import.meta.env.VITE_SERVER}/Store.php?action=searchStore&search=${searchRef.current.value || ""
         }`,
         {
           method: "GET",
@@ -176,7 +176,7 @@ function Locationmanage() {
       }
     }
   };
-  
+
   // ฟังก์ชันลบคลัง
   const deleteStore = async (storeId) => {
     if (window.confirm("คุณต้องการลบข้อมูลคลังนี้หรือไม่?")) {
@@ -263,11 +263,11 @@ function Locationmanage() {
   };
 
   return (
-    <div className="min-vh-100" style={{ 
-        fontFamily: "'Inter', 'Prompt', sans-serif",
-        backgroundColor: "#1a1a1a",
-        color: "#e0e0e0"
-      }}>
+    <div className="min-vh-100" style={{
+      fontFamily: "'Inter', 'Prompt', sans-serif",
+      backgroundColor: "#1a1a1a",
+      color: "#e0e0e0"
+    }}>
       {/* ส่วนแท็บการจัดการ */}
       <Tabs
         activeKey={activeTab}
@@ -276,26 +276,26 @@ function Locationmanage() {
           searchRef.current.value = '';
         }}
         className="mb-0 nav-fill"
-        style={{ 
+        style={{
           backgroundColor: "#2a2a2a",
           borderBottom: "1px solid #333333",
           boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
         }}
       >
-        <Tab 
-          eventKey="locations" 
+        <Tab
+          eventKey="locations"
           title={
             <div className="d-flex align-items-center py-3" style={{ color: activeTab === "locations" ? "#00c853" : "#e0e0e0" }}>
-              <GeoAltFill className="me-2" /> 
+              <GeoAltFill className="me-2" />
               <span className="fw-medium">Locations Page</span>
             </div>
           }
         />
-        <Tab 
-          eventKey="stores" 
+        <Tab
+          eventKey="stores"
           title={
             <div className="d-flex align-items-center py-3" style={{ color: activeTab === "stores" ? "#00c853" : "#e0e0e0" }}>
-              <Building className="me-2" /> 
+              <Building className="me-2" />
               <span className="fw-medium">Stores Page</span>
             </div>
           }
@@ -316,7 +316,7 @@ function Locationmanage() {
                     <div className="position-relative">
                       <FormControl
                         className="ps-4"
-                        style={{ 
+                        style={{
                           borderRadius: "6px",
                           boxShadow: "none",
                           minWidth: "250px",
@@ -329,17 +329,17 @@ function Locationmanage() {
                         ref={searchRef}
                         onKeyPress={handleKeyPress}
                       />
-                      <Search className="position-absolute" style={{ 
-                        left: "10px", 
-                        top: "50%", 
+                      <Search className="position-absolute" style={{
+                        left: "10px",
+                        top: "50%",
                         transform: "translateY(-50%)",
                         color: "#999999"
                       }} />
                     </div>
                     <Button
                       variant="primary"
-                      style={{ 
-                        backgroundColor: "#00c853", 
+                      style={{
+                        backgroundColor: "#00c853",
                         borderColor: "#00c853",
                         borderRadius: "6px"
                       }}
@@ -356,7 +356,7 @@ function Locationmanage() {
                     </Button>
                     <Button
                       variant="light"
-                      style={{ 
+                      style={{
                         borderRadius: "6px",
                         border: "1px solid #444444",
                         backgroundColor: "#333333",
@@ -373,7 +373,7 @@ function Locationmanage() {
                     <Addstore onSave={handleSave}>
                       <Button
                         variant="success"
-                        style={{ 
+                        style={{
                           borderRadius: "6px",
                           backgroundColor: "#007e33",
                           borderColor: "#007e33"
@@ -430,15 +430,36 @@ function Locationmanage() {
                               <Button
                                 variant="danger"
                                 size="sm"
-                                style={{ 
+                                style={{
                                   borderRadius: "6px",
                                   backgroundColor: "#e53935",
                                   borderColor: "#e53935"
                                 }}
                                 onClick={() => deleteStore(store.store_id)}
+                                className="me-1"
                               >
                                 <Trash size={16} />
                               </Button>
+
+                              <EditModal 
+                                entityType="store" 
+                                data={store} 
+                                onSave={handleSave}
+                                customTitle="แก้ไขข้อมูลคลังสินค้า"
+                              >
+                                <Button
+                                  variant="warning"
+                                  size="sm"
+                                  className="ms-1"
+                                  style={{
+                                    borderRadius: "6px",
+                                    backgroundColor: "#fb8c00",
+                                    borderColor: "#fb8c00"
+                                  }}
+                                >
+                                  <Pencil size={16} />
+                                </Button>
+                              </EditModal>
                             </td>
                           </tr>
                         ))}
@@ -446,7 +467,7 @@ function Locationmanage() {
                     )}
                   </Table>
                 </div>
-                
+
                 <div className="mt-3 d-flex justify-content-center">
                   <PaginationComponent
                     itemsPerPage={itemsPerPage}
@@ -470,7 +491,7 @@ function Locationmanage() {
                     <div className="position-relative">
                       <FormControl
                         className="ps-4"
-                        style={{ 
+                        style={{
                           borderRadius: "6px",
                           boxShadow: "none",
                           minWidth: "250px",
@@ -483,17 +504,17 @@ function Locationmanage() {
                         ref={searchRef}
                         onKeyPress={handleKeyPress}
                       />
-                      <Search className="position-absolute" style={{ 
-                        left: "10px", 
-                        top: "50%", 
+                      <Search className="position-absolute" style={{
+                        left: "10px",
+                        top: "50%",
                         transform: "translateY(-50%)",
                         color: "#999999"
                       }} />
                     </div>
                     <Button
                       variant="primary"
-                      style={{ 
-                        backgroundColor: "#00c853", 
+                      style={{
+                        backgroundColor: "#00c853",
                         borderColor: "#00c853",
                         borderRadius: "6px"
                       }}
@@ -510,7 +531,7 @@ function Locationmanage() {
                     </Button>
                     <Button
                       variant="light"
-                      style={{ 
+                      style={{
                         borderRadius: "6px",
                         border: "1px solid #444444",
                         backgroundColor: "#333333",
@@ -527,7 +548,7 @@ function Locationmanage() {
                     <Addlo onSave={handleSave}>
                       <Button
                         variant="success"
-                        style={{ 
+                        style={{
                           borderRadius: "6px",
                           backgroundColor: "#007e33",
                           borderColor: "#007e33"
@@ -573,8 +594,8 @@ function Locationmanage() {
                               {location.location_name || "-"}
                             </td>
                             <td>
-                              <Badge bg="dark" text="light" style={{ 
-                                fontWeight: "normal", 
+                              <Badge bg="dark" text="light" style={{
+                                fontWeight: "normal",
                                 backgroundColor: "#333333",
                                 padding: "6px 10px",
                                 borderRadius: "4px",
@@ -596,15 +617,36 @@ function Locationmanage() {
                               <Button
                                 variant="danger"
                                 size="sm"
-                                style={{ 
+                                style={{
                                   borderRadius: "6px",
                                   backgroundColor: "#e53935",
                                   borderColor: "#e53935"
                                 }}
                                 onClick={() => deleteLocation(location.location_id)}
+                                className="me-1"
                               >
                                 <Trash size={16} />
                               </Button>
+
+                              <EditModal 
+                                entityType="location" 
+                                data={location} 
+                                onSave={handleSave}
+                                customTitle="แก้ไขข้อมูลสถานที่จัดเก็บ"
+                              >
+                                <Button
+                                  variant="warning"
+                                  size="sm"
+                                  className="ms-1"
+                                  style={{
+                                    borderRadius: "6px",
+                                    backgroundColor: "#fb8c00",
+                                    borderColor: "#fb8c00"
+                                  }}
+                                >
+                                  <Pencil size={16} />
+                                </Button>
+                              </EditModal>
                             </td>
                           </tr>
                         ))}
@@ -612,7 +654,7 @@ function Locationmanage() {
                     )}
                   </Table>
                 </div>
-                
+
                 <div className="mt-3 d-flex justify-content-center">
                   <PaginationComponent
                     itemsPerPage={itemsPerPage}

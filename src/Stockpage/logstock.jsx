@@ -9,6 +9,8 @@ import LoadOut from "../Stockpage/loadout";
 import Borrowaction from "../Stockpage/Borrowaction";
 import ReturnItem from "../Stockpage/Returnaction";
 import { useSearchParams } from 'react-router-dom';
+import { Cart } from "react-bootstrap-icons";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
   XCircle,
@@ -25,7 +27,7 @@ function LogStock() {
   const [stockParts, setStockParts] = useState([]);
   const [currentPageData, setCurrentPageData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-
+  const navigate = useNavigate();
   // สถานะสำหรับ modal รายละเอียดสินค้า
   const [showItemDetail, setShowItemDetail] = useState(false);
   const [selectedItemDetail, setSelectedItemDetail] = useState({ partNum: "", locationName: "" });
@@ -144,6 +146,29 @@ function LogStock() {
       color: "#e0e0e0"
     }}>
       <Container fluid className="px-4 py-4">
+        <Button
+  variant="success"
+  style={{
+    position: "fixed",
+    bottom: "20px",
+    right: "20px",
+    zIndex: 9999,
+    borderRadius: "50%",
+    width: "60px",
+    height: "60px",
+    boxShadow: "0 4px 12px rgba(0, 200, 83, 0.5)",
+    backgroundColor: "#377eec",
+    borderColor: "#00c853",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+  }}
+  onClick={() => navigate("/bucket")}
+>
+    {/* icon ตะกร้า importของตัวicon อยู่ด้านบน */}
+   <Cart size={24} />  
+
+</Button>
         <Card className="border-0 shadow-sm" style={{ backgroundColor: "#2a2a2a", color: "#e0e0e0" }}>
           <Card.Body className="p-4">
             <div className="d-flex flex-column">
@@ -288,6 +313,7 @@ function LogStock() {
                               <CalendarDate size={12} className="me-1" />
                               {formatDate(item.datetime)}
                             </small>
+                            
                           </td>
                         </tr>
                       ))

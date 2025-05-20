@@ -3,6 +3,9 @@ import { FormControl, Button, Table, Tabs, Tab, Card, Badge, Container, Alert } 
 import PaginationComponent from "../components/PaginationComponent";
 import Addpart from "../Stockpage/addpart";
 import Swal from "sweetalert2";
+
+import EditModal from "../Stockpage/EditModal";
+import { Pencil } from "react-bootstrap-icons";
 import { 
   Search, 
   XCircle, 
@@ -319,6 +322,25 @@ function ManageSerialPage() {
                             >
                               <Trash size={16} />
                             </Button>
+                            <EditModal 
+  entityType="part" 
+  data={part}  // ข้อมูล part ที่ต้องการแก้ไข
+  onSave={handleSave}
+  customTitle="แก้ไขข้อมูลชิ้นส่วน"
+>
+  <Button
+    variant="warning"
+    size="sm"
+    className="ms-1"
+    style={{
+      borderRadius: "6px",
+      backgroundColor: "#fb8c00",
+      borderColor: "#fb8c00"
+    }}
+  >
+    <Pencil size={16} />
+  </Button>
+</EditModal>
                           </td>
                         </tr>
                       ))}

@@ -7,6 +7,8 @@ import Swal from "sweetalert2";
 import { BlobProvider } from '@react-pdf/renderer';
 import { SerialLabelPDF } from "./SerialLabelPDF";
 import { useNavigate } from 'react-router-dom';
+import EditModal from "../Stockpage/EditModal";
+import { Pencil } from "react-bootstrap-icons";
 import { Printer } from "react-feather";
 import {
   Search,
@@ -239,6 +241,7 @@ function ReceivePart() {
                       <Plus size={18} className="me-1" />
                     </Button>
                   </AddSerial>
+
                 </div>
               </div>
 
@@ -396,6 +399,25 @@ function ReceivePart() {
                                     <Trash size={16} />
                                   </Button>
                                 )}
+
+                                <EditModal
+                                  entityType="serial"
+                                  data={serial}  // ข้อมูล serial ที่ต้องการแก้ไข
+                                  onSave={handleSave}
+                                  customTitle="แก้ไขข้อมูลซีเรียลนัมเบอร์"
+                                >
+                                  <Button
+                                    variant="warning"
+                                    size="sm"
+                                    style={{
+                                      borderRadius: "6px",
+                                      backgroundColor: "#fb8c00",
+                                      borderColor: "#fb8c00"
+                                    }}
+                                  >
+                                    <Pencil size={16} />
+                                  </Button>
+                                </EditModal>
                               </div>
                             </td>
                           </tr>

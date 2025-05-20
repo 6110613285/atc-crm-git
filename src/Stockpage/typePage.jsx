@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { FormControl, Button, Table, Card, Badge } from "react-bootstrap";
 import PaginationComponent from "../components/PaginationComponent";
 import TypeEdit from "../Stockpage/Addtype";
-import { Search, XCircle, Trash, Plus, FileEarmarkText } from "react-bootstrap-icons";
+import EditModal from "../Stockpage/EditModal";
+import { Search, XCircle, Trash, Plus, FileEarmarkText, Pencil } from "react-bootstrap-icons";
 
 function TypeList() {
   const searchRef = useRef(null);
@@ -78,7 +79,8 @@ function TypeList() {
     }
   };
 
-  // ฟังก์ชันแบ่งหน้าสำหรับข้อมูลประเภท
+  
+   // ฟังก์ชันแบ่งหน้าสำหรับข้อมูลประเภท
   const paginateTypes = (pageNumber) => {
     const startIndex = (pageNumber - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
@@ -265,6 +267,25 @@ function TypeList() {
                             >
                               <Trash size={16} />
                             </Button>
+                            
+                            <EditModal 
+                              entityType="type" 
+                              data={type} 
+                              onSave={handleSave}
+                            >
+                              <Button
+                                variant="warning"
+                                size="sm"
+                                className="ms-1"
+                                style={{
+                                  borderRadius: "6px",
+                                  backgroundColor: "#fb8c00",
+                                  borderColor: "#fb8c00"
+                                }}
+                              >
+                                <Pencil size={16} />
+                              </Button>
+                            </EditModal>
                           </td>
                         </tr>
                       ))}

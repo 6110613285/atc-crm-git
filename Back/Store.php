@@ -87,7 +87,215 @@ if ($action == "get") {
     }
 
     mysqli_close($link);
-} else if ($action == "getwhereuserid") {
+}else if ($action == "getSuppliers") {
+    // ดึงชื่อซัพพลายเออร์ที่ไม่ซ้ำกันจากตาราง tb_part_no, tb_gensn, และ tb_stock
+    $sql = "SELECT DISTINCT supplier as name FROM (
+                SELECT supplier FROM tb_part_no WHERE supplier IS NOT NULL AND supplier != ''
+                UNION 
+                SELECT supplier FROM tb_gensn WHERE supplier IS NOT NULL AND supplier != ''
+                UNION 
+                SELECT supplier FROM tb_stock WHERE supplier IS NOT NULL AND supplier != ''
+            ) AS combined_suppliers
+            ORDER BY name ASC";
+    
+    $result = mysqli_query($link, $sql);
+    
+    if (mysqli_num_rows($result) > 0) {
+        $suppliers = [];
+        while ($row = mysqli_fetch_assoc($result)) {
+            $suppliers[] = $row;
+        }
+        echo json_encode($suppliers);
+    } else {
+        echo json_encode(null);
+    }
+    
+    mysqli_close($link);
+}else if ($action == "updateLocation") {
+    // รับค่าจาก POST request
+    $location_id = $_POST['location_id'];
+    $location_name = $_POST['location_name'];
+    $location_detail = $_POST['location_detail'] ?? '';
+    $store_id = $_POST['store_id'];
+
+    // สร้างคำสั่ง SQL
+    $sql = "UPDATE `tb_location` SET 
+            location_name = '$location_name', 
+            location_detail = '$location_detail',
+            store_id = '$store_id'
+            WHERE location_id = '$location_id'";
+
+    // ทำการ query
+    $result = mysqli_query($link, $sql);
+
+    // ส่งผลลัพธ์
+    if ($result) {
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'อัปเดตข้อมูลสถานที่จัดเก็บสำเร็จ'
+        ]);
+    } else {
+        echo json_encode([
+            'status' => 'error',
+            'message' => mysqli_error($link)
+        ]);
+    }
+
+    mysqli_close($link);
+}
+
+else if ($action == "updateStore") {
+    // รับค่าจาก POST request
+    $store_id = $_POST['store_id'];
+    $store_name = $_POST['store_name'];
+    $store_address = $_POST['store_address'] ?? '';
+    $store_detail = $_POST['store_detail'] ?? '';
+
+    // สร้างคำสั่ง SQL
+    $sql = "UPDATE `tb_store` SET 
+            store_name = '$store_name', 
+            store_address = '$store_address',
+            store_detail = '$store_detail'
+            WHERE store_id = '$store_id'";
+
+    // ทำการ query
+    $result = mysqli_query($link, $sql);
+
+    // ส่งผลลัพธ์
+    if ($result) {
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'อัปเดตข้อมูลคลังสินค้าสำเร็จ'
+        ]);
+    } else {
+        echo json_encode([
+            'status' => 'error',
+            'message' => mysqli_error($link)
+        ]);
+    }
+
+    mysqli_close($link);
+}else if ($action == "updateType") {
+    // รับค่าจาก POST request
+    $type_id = $_POST['type_id'];
+    $type_name = $_POST['type_name'];
+    $type_prefix = $_POST['type_prefix'];
+    $type_detail = $_POST['type_detail'] ?? '';
+    $type_unit = $_POST['type_unit'] ?? '';
+
+    $sql = "UPDATE `tb_type` SET 
+            type_name = '$type_name', 
+            type_prefix = '$type_prefix', 
+            type_detail = '$type_detail',
+            type_unit = '$type_unit'
+            WHERE type_id = '$type_id'";
+
+    
+    $result = mysqli_query($link, $sql);
+
+    
+    if ($result) {
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'อัปเดตข้อมูลสำเร็จ'
+        ]);
+    } else {
+        echo json_encode([
+            'status' => 'error',
+            'message' => mysqli_error($link)
+        ]);
+    }
+    mysqli_close($link);
+} // เพิ่มฟังก์ชัน updatePart ใน Store.php
+else if ($action == "updatePart") {
+    // รับค่าจาก POST request
+    $part_num = $_POST['part_num'];
+    $part_name = $_POST['part_name'];
+    $part_type = $_POST['part_type'];
+    $supplier = $_POST['supplier'] ?? '';
+    $brand = $_POST['brand'] ?? '';
+    $min = $_POST['min'] ?? '0';
+    $part_detail = $_POST['part_detail'] ?? '';
+
+    // สร้างคำสั่ง SQL
+    $sql = "UPDATE `tb_part_no` SET 
+            part_name = '$part_name', 
+            part_type = '$part_type',
+            supplier = '$supplier',
+            brand = '$brand',
+            min = '$min',
+            part_detail = '$part_detail'
+            WHERE part_num = '$part_num'";
+
+    // ทำการ query
+    $result = mysqli_query($link, $sql);
+
+    // ส่งผลลัพธ์
+    if ($result) {
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'อัปเดตข้อมูลชิ้นส่วนสำเร็จ'
+        ]);
+    } else {
+        echo json_encode([
+            'status' => 'error',
+            'message' => mysqli_error($link)
+        ]);
+    }
+
+    mysqli_close($link);
+}
+
+// เพิ่มฟังก์ชัน updateSerial ใน Store.php
+else if ($action == "updateSerial") {
+    // รับค่าจาก POST request
+    $part_no = $_POST['part_no'];
+    $part_num = $_POST['part_num'];
+    $supplier = $_POST['supplier'] ?? '';
+    $brand = $_POST['brand'] ?? '';
+    $sup_serial = $_POST['sup_serial'] ?? '';
+    $sup_part_number = $_POST['sup_part_number'] ?? '';
+    $packsize = $_POST['packsize'] ?? '1';
+    
+    // ดึงข้อมูล part_name จาก tb_part_no เพื่อใช้อัปเดต
+    $get_name_sql = "SELECT part_name FROM tb_part_no WHERE part_num = '$part_num'";
+    $name_result = mysqli_query($link, $get_name_sql);
+    $part_name = "";
+    
+    if ($name_result && mysqli_num_rows($name_result) > 0) {
+        $name_row = mysqli_fetch_assoc($name_result);
+        $part_name = $name_row['part_name'];
+    }
+
+    // สร้างคำสั่ง SQL
+    $sql = "UPDATE `tb_gensn` SET 
+            part_num = '$part_num', 
+            part_name = '$part_name',
+            supplier = '$supplier',
+            brand = '$brand',
+            sup_serial = '$sup_serial',
+            sup_part_number = '$sup_part_number',
+            packsize = '$packsize'
+            WHERE part_no = '$part_no'";
+
+    // ทำการ query
+    $result = mysqli_query($link, $sql);
+
+    // ส่งผลลัพธ์
+    if ($result) {
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'อัปเดตข้อมูลซีเรียลนัมเบอร์สำเร็จ'
+        ]);
+    } else {
+        echo json_encode([
+            'status' => 'error',
+            'message' => mysqli_error($link)
+        ]);
+    }
+
+    mysqli_close($link);
+}else if ($action == "getwhereuserid") {
 
     $id = $_GET['id'];
 
