@@ -3,6 +3,9 @@ import { FormControl, Button, Table, Tabs, Tab, Card, Badge, Container, Alert } 
 import PaginationComponent from "../components/PaginationComponent";
 import Addpart from "../Stockpage/addpart";
 import Swal from "sweetalert2";
+
+
+
 import { 
   Search, 
   XCircle, 
@@ -139,12 +142,17 @@ function ManageSerialPage() {
     }
   };
 
+
+
+
+
   return (
     <div className="min-vh-100" style={{ 
         fontFamily: "'Inter', 'Prompt', sans-serif",
         backgroundColor: "#1a1a1a",
         color: "#e0e0e0"
       }}>
+        
       {/* ส่วนแท็บการจัดการ */}
       <Tabs
         activeKey="parts"
@@ -165,6 +173,8 @@ function ManageSerialPage() {
           }
         />
       </Tabs>
+
+
 
       <Container fluid className="px-4 py-4">
         <Card className="border-0 shadow-sm" style={{ backgroundColor: "#2a2a2a", color: "#e0e0e0" }}>
@@ -318,6 +328,10 @@ function ManageSerialPage() {
                               onClick={() => deletePart(part.part_num)}
                             >
                               <Trash size={16} />
+
+
+                              
+
                             </Button>
                           </td>
                         </tr>
@@ -325,6 +339,7 @@ function ManageSerialPage() {
                     </tbody>
                   )}
                 </Table>
+                
               </div>
               <div className="mt-3 d-flex justify-content-center">
                 <PaginationComponent
@@ -338,7 +353,16 @@ function ManageSerialPage() {
             </div>
           </Card.Body>
         </Card>
+
+        
+
       </Container>
+
+                  
+
+                  
+
+
     </div>
   );
 }
