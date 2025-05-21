@@ -31,7 +31,7 @@
     "react-dom": "^18.2.0",
     "react-feather": "^2.0.10",
     "react-router-dom": "^6.10.0",
-    "sweetalert2": "^11.6.13"
+    "sweetalert2": "^11.21.2"
   },
   "devDependencies": {
     "@types/react": "^18.0.28",
