@@ -147,28 +147,28 @@ function LogStock() {
     }}>
       <Container fluid className="px-4 py-4">
         <Button
-  variant="success"
-  style={{
-    position: "fixed",
-    bottom: "20px",
-    right: "20px",
-    zIndex: 9999,
-    borderRadius: "50%",
-    width: "60px",
-    height: "60px",
-    boxShadow: "0 4px 12px rgba(0, 200, 83, 0.5)",
-    backgroundColor: "#377eec",
-    borderColor: "#00c853",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-  }}
-  onClick={() => navigate("/bucket")}
->
-    {/* icon ตะกร้า importของตัวicon อยู่ด้านบน */}
-   <Cart size={24} />  
+          variant="success"
+          style={{
+            position: "fixed",
+            bottom: "50px",
+            right: "50px",
+            zIndex: 9999,
+            borderRadius: "50%",
+            width: "60px",
+            height: "60px",
+            boxShadow: "0 4px 12px rgba(0, 200, 83, 0.5)",
+            backgroundColor: "#377eec",
+            borderColor: "#00c853",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+          onClick={() => navigate("/bucket")}
+        >
+          {/* icon ตะกร้า importของตัวicon อยู่ด้านบน */}
+          <Cart size={24} />
+        </Button>
 
-</Button>
         <Card className="border-0 shadow-sm" style={{ backgroundColor: "#2a2a2a", color: "#e0e0e0" }}>
           <Card.Body className="p-4">
             <div className="d-flex flex-column">
@@ -237,7 +237,7 @@ function LogStock() {
                     <Borrowaction onSave={handleSave} Username={userInfo?.username}>
                       <div className="d-flex align-items-center fw-bold">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" className="bi bi-hand-index-thumb me-2" viewBox="0 0 16 16">
-                          <path d="M6.75 1a.75.75 0 0 1 .75.75V8a.5.5 0 0 0 1 0V5.467l.086-.004c.317-.012.637-.008.816.027.134.027.294.096.448.182.077.042.15.147.15.314V8a.5.5 0 0 0 1 0V6.435l.106-.01c.316-.024.584-.01.708.04.118.046.3.207.486.43.081.096.15.19.2.259V8.5a.5.5 0 1 0 1 0v-1h.342a1 1 0 0 1 .995 1.1l-.271 2.715a2.5 2.5 0 0 1-.317.991l-1.395 2.442a.5.5 0 0 1-.434.252H6.118a.5.5 0 0 1-.447-.276l-1.232-2.465-2.512-4.185a.517.517 0 0 1 .809-.631l2.41 2.41A.5.5 0 0 0 6 9.5V1.75A.75.75 0 0 1 6.75 1z"/>
+                          <path d="M6.75 1a.75.75 0 0 1 .75.75V8a.5.5 0 0 0 1 0V5.467l.086-.004c.317-.012.637-.008.816.027.134.027.294.096.448.182.077.042.15.147.15.314V8a.5.5 0 0 0 1 0V6.435l.106-.01c.316-.024.584-.01.708.04.118.046.3.207.486.43.081.096.15.19.2.259V8.5a.5.5 0 1 0 1 0v-1h.342a1 1 0 0 1 .995 1.1l-.271 2.715a2.5 2.5 0 0 1-.317.991l-1.395 2.442a.5.5 0 0 1-.434.252H6.118a.5.5 0 0 1-.447-.276l-1.232-2.465-2.512-4.185a.517.517 0 0 1 .809-.631l2.41 2.41A.5.5 0 0 0 6 9.5V1.75A.75.75 0 0 1 6.75 1z" />
                         </svg>
                         Borrow
                       </div>
@@ -313,7 +313,7 @@ function LogStock() {
                               <CalendarDate size={12} className="me-1" />
                               {formatDate(item.datetime)}
                             </small>
-                            
+
                           </td>
                         </tr>
                       ))
