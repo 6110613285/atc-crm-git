@@ -145,6 +145,7 @@ function LogStock() {
       backgroundColor: "#1a1a1a",
       color: "#e0e0e0"
     }}>
+      {/* ปุ่มลอย */}
       <Container fluid className="px-4 py-4">
         <Button
           variant="success"
