@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FormControl, Button, Table, Tabs, Tab, Card, Badge, Container, Alert } from "react-bootstrap";
 import PaginationComponent from "../components/PaginationComponent";
-import Addpart from "../Stockpage/addpart";
+import AddBucket from "../Stockpage/addbucket";
 import Swal from "sweetalert2";
 import { Basket} from "react-bootstrap-icons";
+import axios from 'axios';
 
 import EditModal from "../Stockpage/EditModal";
 import { Bucket, Pencil } from "react-bootstrap-icons"; //เรียกใช้ react-bootstrap-icons
@@ -15,7 +16,7 @@ import {
   Tools
 } from "react-bootstrap-icons";
 
-function ManageSerialPage() {
+function ManageBucketPage() {
   const searchRef = useRef(null);
   const [parts, setParts] = useState([]);
 
@@ -110,6 +111,82 @@ function ManageSerialPage() {
       }
     }
   };
+
+  //save bucket
+const BucketForm = () => {
+  const [formData, setFormData] = useState({
+    UID: '',
+    PO: '',
+    QO: '',
+    CUSTOMER: '',
+    BucketID: '',
+    USERID: '',
+    USERNAME: '',
+    Partname: '',
+    QTY: '',
+    status: 'approve',
+    datetime: '',
+    Note: ''
+  });
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+  };
+   return (
+    <form onSubmit={handleSubmit} className="p-4 max-w-md mx-auto shadow-lg rounded bg-white space-y-3">
+      <h2 className="text-xl font-semibold text-center mb-4">เพิ่มข้อมูล Bucket</h2>
+
+      {Object.keys(formData).map((key) => (
+        key !== 'status' && key !== 'datetime' ? (
+          <div key={key}>
+            <label className="block mb-1 font-medium">{key}</label>
+            <input
+              type="text"
+              name={key}
+              value={formData[key]}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border rounded"
+              required
+            />
+          </div>
+        ) : null
+      ))}
+      <div>
+        <label className="block mb-1 font-medium">Status</label>
+        <select name="status" value={formData.status} onChange={handleChange} className="w-full px-3 py-2 border rounded">
+          <option value="approve">Approve</option>
+          <option value="na">Not Approve</option>
+          <option value="cancel">Cancel</option>
+        </select>
+      </div>
+
+      <div>
+        <label className="block mb-1 font-medium">Datetime</label>
+        <input
+          type="datetime-local"
+          name="datetime"
+          value={formData.datetime}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border rounded"
+        />
+      </div>
+      <button type="submit" className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">
+        บันทึกข้อมูล
+      </button>
+    </form>
+  );
+};
+
+
+  
 
   // ===== ฟังก์ชันแบ่งหน้า =====
   // แบ่งหน้าสำหรับข้อมูล parts
@@ -212,7 +289,7 @@ function ManageSerialPage() {
                     }}
                     onClick={async () => {
                       if (searchRef.current.value.trim() === '') {
-                        await getParts();
+                        await getBucket();
                       } else {
                         await searchParts();
                       }
@@ -237,7 +314,7 @@ function ManageSerialPage() {
                   >
                     <XCircle size={18} className="me-1" /> Clear
                   </Button>
-                  <Addpart onSave={handleSave}>
+                  <AddBucket onSave={handleSave}>
                     <Button
                       variant="success"
                       style={{ 
@@ -248,7 +325,7 @@ function ManageSerialPage() {
                     >
                       <Plus size={18} className="me-1" />
                     </Button>
-                  </Addpart>
+                  </AddBucket>
                 </div>
               </div>
               
@@ -256,19 +333,19 @@ function ManageSerialPage() {
                 <Table hover className="align-middle border table-dark" style={{ borderRadius: "8px", overflow: "hidden" }}>
                   <thead style={{ backgroundColor: "#333333" }}>
                     <tr className="text-center">
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>No.</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>PO</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>QO</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>CUSTOMER</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>BucketID</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>USERID</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>USERNAME</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>Partname</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>QTY</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>status</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>datetime</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>Note</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>Action</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>No.</th> {/* ไอดีรายการหลัก */}
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>PO</th> {/* หมายเลขคำสั่งซื้อ */}
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>QO</th> {/* จำนวนที่สั่งซื้อ */}
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>CUSTOMER</th> {/* ชื่อลูกค้า */}
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>BucketID</th> {/* หมายเลขตะกร้า */}
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>USERID</th> {/* ไอดีผู้ใช้ */}
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>USERNAME</th> {/* ชื่อผู้ใช้ */}
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Partname</th> {/* ชื่อชิ้นส่วน*/}
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>QTY</th> {/* จำนวน*/}
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>status</th> {/* สถานะรายการ */}
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>datetime</th> {/* วันเวลาบันทึก */}
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Note</th> {/* หมายเหตุ */}
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Action</th> {/* ลบ แก้ไขรายละเอียด */}
                     </tr>
                   </thead>
 
@@ -335,10 +412,10 @@ function ManageSerialPage() {
                             </Button>
                             <EditModal 
   entityType="part" 
-  data={part}  // ข้อมูล part ที่ต้องการแก้ไข
-  onSave={handleSave}
-  customTitle="แก้ไขข้อมูลชิ้นส่วน"
->
+    data={part}  // ข้อมูล part ที่ต้องการแก้ไข
+    onSave={handleSave}
+    customTitle="แก้ไขข้อมูลชิ้นส่วน"
+  >
   <Button
     variant="warning"
     size="sm"
@@ -376,4 +453,4 @@ function ManageSerialPage() {
   );
 }
 
-export default ManageSerialPage;
+export default ManageBucketPage;
