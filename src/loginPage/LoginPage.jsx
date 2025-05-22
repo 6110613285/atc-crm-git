@@ -38,7 +38,8 @@ const LoginPage = () => {
           localStorage.setItem("token", data.data.token);
           localStorage.setItem("fullname", data.data.fullname);
           localStorage.setItem("level", data.data.level);
-          /* localStorage.setItem("id", data.data.user_id);
+          localStorage.setItem("id", data.data.user_id);
+          /* 
           localStorage.setItem("tel", data.data.tel);
           localStorage.setItem("email", data.data.email);
           localStorage.setItem("status", data.data.status); */

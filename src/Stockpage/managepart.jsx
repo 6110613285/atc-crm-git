@@ -5,7 +5,7 @@ import Addpart from "../Stockpage/addpart";
 import Swal from "sweetalert2";
 
 import EditModal from "../Stockpage/EditModal";
-import { Pencil } from "react-bootstrap-icons";
+import { Pencil } from "react-bootstrap-icons"; //เรียกใช้ react-bootstrap-icons
 import { 
   Search, 
   XCircle, 

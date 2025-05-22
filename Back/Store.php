@@ -1083,6 +1083,26 @@ else if ($action == "getLastSerialCount") {
     echo json_encode($data);
     mysqli_close($link);
     return;
+
+}else if ($action == "getBucket") {
+    // ตะกร้า
+    $sql = "SELECT * FROM tb_part_no ORDER BY part_num ASC";
+    $result = mysqli_query($link, $sql);
+
+    if (!$result) {
+        echo json_encode(null);
+        mysqli_close($link);
+        return;
+    }
+
+    $data = array();
+    while ($row = mysqli_fetch_assoc($result)) {
+        $data[] = $row;
+    }
+
+    echo json_encode($data);
+    mysqli_close($link);
+    return;
 } else if ($action == "deleteType") {
     $type_id = $_GET['type_id'];
 
