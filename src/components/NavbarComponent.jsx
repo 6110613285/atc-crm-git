@@ -236,13 +236,6 @@ function NavbarComponent() {
                         <b className="fs-5">Stockpage</b>
                       </Nav.Link>
 
-                      {/* <Nav.Link onClick={handleClose} as={Link} to="/product" className="my-menu d-flex align-items-center gap-3 p-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" className="bi bi-display" viewBox="0 0 16 16">
-                          <path d="M0 4s0-2 2-2h12s2 0 2 2v6s0 2-2 2h-4c0 .667.083 1.167.25 1.5H11a.5.5 0 0 1 0 1H5a.5.5 0 0 1 0-1h.75c.167-.333.25-.833.25-1.5H2s-2 0-2-2V4zm1.398-.855a.758.758 0 0 0-.254.302A1.46 1.46 0 0 0 1 4.01V10c0 .325.078.502.145.602.07.105.17.188.302.254a1.464 1.464 0 0 0 .538.143L2.01 11H14c.325 0 .502-.078.602-.145a.758.758 0 0 0 .254-.302 1.464 1.464 0 0 0 .143-.538L15 9.99V4c0-.325-.078-.502-.145-.602a.757.757 0 0 0-.302-.254A1.46 1.46 0 0 0 13.99 3H2c-.325 0-.502.078-.602.145z"/>
-                        </svg>
-                        <b className="fs-5">Products</b>
-                      </Nav.Link> */}
-
                       <Nav.Link onClick={handleClose} as={Link} to="/Receive" className="my-menu d-flex align-items-center gap-3 p-4">
                         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" className="bi bi-upc-scan" viewBox="0 0 16 16">
                           <path d="M1.5 1a.5.5 0 0 0-.5.5v3a.5.5 0 0 1-1 0v-3A1.5 1.5 0 0 1 1.5 0h3a.5.5 0 0 1 0 1h-3zM11 .5a.5.5 0 0 1 .5-.5h3A1.5 1.5 0 0 1 16 1.5v3a.5.5 0 0 1-1 0v-3a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 1-.5-.5zM.5 11a.5.5 0 0 1 .5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 1 0 1h-3A1.5 1.5 0 0 1 0 14.5v-3a.5.5 0 0 1 .5-.5zm15 0a.5.5 0 0 1 .5.5v3a1.5 1.5 0 0 1-1.5 1.5h-3a.5.5 0 0 1 0-1h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 1 .5-.5zM3 4.5a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0v-7zm2 0a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0v-7zm2 0a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0v-7zm2 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-7zm3 0a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0v-7z" />
@@ -256,7 +249,7 @@ function NavbarComponent() {
                         </svg>
                         <b className="fs-5">Bucket</b>
                       </Nav.Link>
-                      
+
                       <Nav.Link onClick={handleClose} as={Link} to="/Borrow" className="my-menu d-flex align-items-center gap-3 p-4">
                         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" className="bi bi-box-arrow-up-right" viewBox="0 0 16 16">
                           <path fillRule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z" />
@@ -301,11 +294,48 @@ function NavbarComponent() {
 
                     </Accordion.Body>
                   </Accordion.Item>
+                  <Accordion.Item eventKey="2">
+                    <Accordion.Header>Product</Accordion.Header>
+                    <Accordion.Body className="p-0">
+
+                      <Nav.Link onClick={handleClose} as={Link} to="/product" className="my-menu d-flex align-items-center gap-3 p-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" className="bi bi-display" viewBox="0 0 16 16">
+                          <path d="M0 4s0-2 2-2h12s2 0 2 2v6s0 2-2 2h-4c0 .667.083 1.167.25 1.5H11a.5.5 0 0 1 0 1H5a.5.5 0 0 1 0-1h.75c.167-.333.25-.833.25-1.5H2s-2 0-2-2V4zm1.398-.855a.758.758 0 0 0-.254.302A1.46 1.46 0 0 0 1 4.01V10c0 .325.078.502.145.602.07.105.17.188.302.254a1.464 1.464 0 0 0 .538.143L2.01 11H14c.325 0 .502-.078.602-.145a.758.758 0 0 0 .254-.302 1.464 1.464 0 0 0 .143-.538L15 9.99V4c0-.325-.078-.502-.145-.602a.757.757 0 0 0-.302-.254A1.46 1.46 0 0 0 13.99 3H2c-.325 0-.502.078-.602.145z" />
+                        </svg>
+                        <b className="fs-5">Products</b>
+                      </Nav.Link>
+
+                      <Nav.Link onClick={handleClose} as={Link} to="/Fix" className="my-menu d-flex align-items-center gap-3 p-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" className="bi bi-tools" viewBox="0 0 16 16">
+                          <path d="M1 0 0 1l2.2 3.081a1 1 0 0 0 .815.419h.07a1 1 0 0 1 .708.293L2.8 5.793l1.414-1.414L5.207 5.8a1 1 0 0 1 .293.707v.071a1 1 0 0 0 .419.814L9 8.6l1.4-1.4L8.6 9a1 1 0 0 0-.814.419v.07a1 1 0 0 1-.293.708L6.293 11.4 5.4 10.507l-.793.793 1.893 1.893 1.414-1.414L9.207 10.5a1 1 0 0 1 .708-.293h.071a1 1 0 0 0 .814-.419L14 6.8l-1.4-1.4L15 3 1 0Zm.707 1.293L8.586 2L7 3.586l-.707-.707L1.707 1.293Z" />
+                        </svg>
+                        <b className="fs-5">Fix</b>
+                      </Nav.Link>
+
+                      <Nav.Link onClick={handleClose} as={Link} to="/pc-log" className="my-menu d-flex align-items-center gap-3 p-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" className="bi bi-file-text" viewBox="0 0 16 16">
+                          <path d="M5 4a.5.5 0 0 0 0 1h6a.5.5 0 0 0 0-1H5zm-.5 2.5A.5.5 0 0 1 5 6h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5zM5 8a.5.5 0 0 0 0 1h6a.5.5 0 0 0 0-1H5zm0 2a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1H5z" />
+                          <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2zm10-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1z" />
+                        </svg>
+                        <b className="fs-5">Log History</b>
+                      </Nav.Link>
+
+                    </Accordion.Body>
+                  </Accordion.Item>
                 </Accordion>
                 <hr />
 
                 {userInfo && userInfo.level === "admin" ? (
-                  <Nav.Link
+                  <Nav.Link onClick={handleClose} as={Link} to="/AdminUser" className="my-menu d-flex align-items-center gap-3 p-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" className="bi bi-tools" viewBox="0 0 16 16">
+                          <path d="M1 0 0 1l2.2 3.081a1 1 0 0 0 .815.419h.07a1 1 0 0 1 .708.293l2.675 2.675-2.617 2.654A3.003 3.003 0 0 0 0 13a3 3 0 1 0 5.878-.851l2.654-2.617.968.968-.305.914a1 1 0 0 0 .242 1.023l3.27 3.27a.997.997 0 0 0 1.414 0l1.586-1.586a.997.997 0 0 0 0-1.414l-3.27-3.27a1 1 0 0 0-1.023-.242L10.5 9.5l-.96-.96 2.68-2.643A3.005 3.005 0 0 0 16 3c0-.269-.035-.53-.102-.777l-2.14 2.141L12 4l-.364-1.757L13.777.102a3 3 0 0 0-3.675 3.68L7.462 6.46 4.793 3.793a1 1 0 0 1-.293-.707v-.071a1 1 0 0 0-.419-.814L1 0Zm9.646 10.646a.5.5 0 0 1 .708 0l2.914 2.915a.5.5 0 0 1-.707.707l-2.915-2.914a.5.5 0 0 1 0-.708ZM3 11l.471.242.529.026.287.445.445.287.026.529L5 13l-.242.471-.026.529-.445.287-.287.445-.529.026L3 15l-.471-.242L2 14.732l-.287-.445L1.268 14l-.026-.529L1 13l.242-.471.026-.529.445-.287.287-.445.529-.026L3 11Z" />
+                        </svg>
+                        <b className="fs-5">Admin User</b>
+                </Nav.Link>
+                ) : (
+                  <></>
+                )}
+                <Nav.Link
                     as={Link}
                     to="/Manage"
                     className="my-menu d-flex align-items-center gap-3 p-4"
@@ -322,9 +352,6 @@ function NavbarComponent() {
                     </svg>
                     <b className="fs-5">Manage</b>
                   </Nav.Link>
-                ) : (
-                  <></>
-                )}
                 <Nav.Link
                   as={Link}
                   className="my-menu d-flex align-items-center gap-3 p-4"
@@ -353,13 +380,11 @@ function NavbarComponent() {
                   </svg>
                   <b className="fs-5">Logout</b>
                 </Nav.Link>
-                {userInfo?.position === "Newsale" ? (
-                  <></>
-                ) : (
+                {userInfo?.position === "BD" ? (
                   <Nav.Link
                     onClick={handleClose}
                     as={Link}
-                    to="http://192.168.1.247/video/"
+                    to="http://192.168.2.19:8080/backup-old-video/web_for_secret_video/video_old/"
                     target="_blank"
                     className="my-menu d-flex align-items-center gap-3 p-4"
                   >
@@ -376,6 +401,8 @@ function NavbarComponent() {
                     </svg>
                     <b className="fs-5">Secret Info</b>
                   </Nav.Link>
+                ) : (
+                  <></>
                 )}
               </Nav>
             </Offcanvas.Body>

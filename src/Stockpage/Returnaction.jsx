@@ -33,20 +33,40 @@ function ReturnItem({ onSave, Username = localStorage.getItem("fullname"), child
   };
 
   // ฟังก์ชันดึงข้อมูลรายการที่ยืมทั้งหมด
+  // ฟังก์ชันดึงข้อมูลรายการที่ยืมและเบิกทั้งหมด
   const fetchBorrowedItems = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_SERVER}/Store.php?action=getBorrowedParts`);
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        // กรองเฉพาะรายการของผู้ใช้ปัจจุบัน ถ้าไม่ใช่ admin
-        const userLevel = localStorage.getItem("level");
-        if (userLevel !== "admin") {
-          const filteredData = data.filter(item => item.user === Username);
-          setBorrowedItems(filteredData);
-        } else {
-          setBorrowedItems(data);
-        }
+      // ดึงข้อมูลจาก 2 แหล่ง
+      const [borrowResponse, outResponse] = await Promise.all([
+        fetch(`${import.meta.env.VITE_SERVER}/Store.php?action=getBorrowedParts`),
+        fetch(`${import.meta.env.VITE_SERVER}/Store.php?action=getOutItems`)
+      ]);
+
+      const borrowData = await borrowResponse.json();
+      const outData = await outResponse.json();
+
+      // รวมข้อมูลทั้งสอง พร้อมเพิ่ม type
+      const combinedData = [
+        ...(Array.isArray(borrowData) ? borrowData.map(item => ({
+          ...item,
+          type: 'BORROW',
+          borrowed_qty: item.borrowed_qty || item.qty
+        })) : []),
+        ...(Array.isArray(outData) ? outData.map(item => ({
+          ...item,
+          type: 'OUT',
+          borrowed_qty: item.qty
+        })) : [])
+      ];
+
+      // กรองเฉพาะรายการของผู้ใช้ปัจจุบัน ถ้าไม่ใช่ admin
+      const userLevel = localStorage.getItem("level");
+      if (userLevel !== "admin") {
+        const filteredData = combinedData.filter(item => item.user === Username);
+        setBorrowedItems(filteredData);
+      } else {
+        setBorrowedItems(combinedData);
       }
     } catch (error) {
       console.error("Error fetching borrowed items:", error);
@@ -55,25 +75,25 @@ function ReturnItem({ onSave, Username = localStorage.getItem("fullname"), child
       setLoading(false);
     }
   };
-
+  
   // ฟังก์ชันค้นหาจาก Serial Number
   const handleSerialSearch = async () => {
     if (!serialInput.trim()) return;
-    
+
     setFetchingItem(true);
-    
+
     try {
       // ค้นหาจากรายการที่โหลดมาแล้ว
-      const matchingItem = borrowedItems.find(item => 
+      const matchingItem = borrowedItems.find(item =>
         item.serial_num.toLowerCase() === serialInput.toLowerCase()
       );
-      
+
       if (matchingItem) {
         // ตรวจสอบว่ามีรายการนี้อยู่ในรายการที่เลือกแล้วหรือไม่
         const isAlreadySelected = selectedItems.some(
-          item => item.serial_num === matchingItem.serial_num
+          item => item.serial_num === matchingItem.serial_num && item.type === matchingItem.type
         );
-        
+
         if (!isAlreadySelected) {
           // เพิ่มรายการใหม่ไปยังรายการที่เลือก
           setSelectedItems([...selectedItems, {
@@ -81,7 +101,7 @@ function ReturnItem({ onSave, Username = localStorage.getItem("fullname"), child
             returnQty: matchingItem.qty || matchingItem.borrowed_qty,
             maxQty: matchingItem.qty || matchingItem.borrowed_qty
           }]);
-          
+
           // ล้างช่องค้นหา
           setSerialInput("");
           if (serialInputRef.current) serialInputRef.current.value = "";
@@ -99,7 +119,7 @@ function ReturnItem({ onSave, Username = localStorage.getItem("fullname"), child
         Swal.fire({
           position: "center",
           icon: "error",
-          title: "ไม่พบรายการที่ยืมด้วย Serial Number นี้",
+          title: "ไม่พบรายการที่ยืม/เบิกด้วย Serial Number นี้",
           showConfirmButton: false,
           timer: 2000,
         });
@@ -138,11 +158,11 @@ function ReturnItem({ onSave, Username = localStorage.getItem("fullname"), child
     const updatedItems = [...selectedItems];
     const maxQty = updatedItems[index].maxQty || 1;
     const newQty = quantity > maxQty ? maxQty : (quantity < 1 ? 1 : quantity);
-    
+
     updatedItems[index].returnQty = newQty;
     setSelectedItems(updatedItems);
   };
-  
+
   // ฟังก์ชันอัพเดต Location
   const updateLocation = (index, location) => {
     const updatedItems = [...selectedItems];
@@ -222,6 +242,7 @@ function ReturnItem({ onSave, Username = localStorage.getItem("fullname"), child
     }
   };
 
+
   // ฟังก์ชันสำหรับบันทึกลง tb_log_product
   const saveLogEntry = async (item) => {
     try {
@@ -236,7 +257,7 @@ function ReturnItem({ onSave, Username = localStorage.getItem("fullname"), child
         `&location=${encodeURIComponent(item.location)}` +
         `&storename=${encodeURIComponent(item.store_name || '')}` +
         `&note=${encodeURIComponent(noteRef.current.value || '')}` +
-        `&status=${encodeURIComponent("Return")}` +
+        `&status=${encodeURIComponent("Return")}` + // ใช้ Return สำหรับ Log
         `&serial_num=${encodeURIComponent(item.serial_num || '')}`;
 
       const res = await fetch(queryString, {
@@ -253,6 +274,7 @@ function ReturnItem({ onSave, Username = localStorage.getItem("fullname"), child
     }
   };
 
+
   // ฟังก์ชันสำหรับอัพเดท stock
   const updateStock = async (item) => {
     try {
@@ -268,6 +290,7 @@ function ReturnItem({ onSave, Username = localStorage.getItem("fullname"), child
         `&storename=${encodeURIComponent(item.store_name || '')}` +
         `&note=${encodeURIComponent(noteRef.current.value || '')}` +
         `&status=${encodeURIComponent("RETURN")}` +
+        `&return_type=${encodeURIComponent(item.type)}` + // ส่ง type ไปด้วย
         `&serial_num=${encodeURIComponent(item.serial_num || '')}` +
         `&sup_serial=${encodeURIComponent(item.sup_serial || '')}` +
         `&sup_barcode=${encodeURIComponent(item.sup_barcode || '')}`;
@@ -284,16 +307,15 @@ function ReturnItem({ onSave, Username = localStorage.getItem("fullname"), child
       throw err;
     }
   };
-
   // Refs for form fields
   const noteRef = useRef(null);
   const serialInputRef = useRef(null);
 
   return (
     <div className="d-flex justify-content-end">
-      <Button 
-        className="fw-bold" 
-        variant="success" 
+      <Button
+        className="fw-bold"
+        variant="success"
         onClick={handleShow}
       >
         {children || "Return Items"}
@@ -303,7 +325,7 @@ function ReturnItem({ onSave, Username = localStorage.getItem("fullname"), child
         <Form noValidate validated={validated} onSubmit={handleSubmit}>
           <Modal.Header closeButton>
             <Modal.Title>
-              <b>Return Borrowed Items</b>
+              <b>Return Items (Borrowed & OUT)</b>
             </Modal.Title>
           </Modal.Header>
           <Modal.Body>
@@ -319,8 +341,8 @@ function ReturnItem({ onSave, Username = localStorage.getItem("fullname"), child
                       onChange={(e) => setSerialInput(e.target.value)}
                       onKeyPress={handleSerialKeyPress}
                     />
-                    <Button 
-                      variant="primary" 
+                    <Button
+                      variant="primary"
                       onClick={handleSerialSearch}
                       disabled={fetchingItem || !serialInput.trim()}
                       className="ms-2"
@@ -342,6 +364,7 @@ function ReturnItem({ onSave, Username = localStorage.getItem("fullname"), child
                   <Table bordered className="mb-3">
                     <thead>
                       <tr>
+                        <th>Type</th>
                         <th>Serial Number</th>
                         <th>Part Name</th>
                         <th>Location</th>
@@ -352,6 +375,18 @@ function ReturnItem({ onSave, Username = localStorage.getItem("fullname"), child
                     <tbody>
                       {selectedItems.map((item, index) => (
                         <tr key={`selected-${item.serial_num}-${index}`}>
+                          <td>
+                            <span
+                              className={`badge ${item.type === 'BORROW' ? 'bg-warning' : 'bg-info'}`}
+                              style={{
+                                padding: '5px 10px',
+                                borderRadius: '12px',
+                                fontSize: '0.85em'
+                              }}
+                            >
+                              {item.type}
+                            </span>
+                          </td>
                           <td>{item.serial_num || '-'}</td>
                           <td>{item.part_name}</td>
                           <td>
@@ -365,15 +400,16 @@ function ReturnItem({ onSave, Username = localStorage.getItem("fullname"), child
                           <td>
                             <Form.Control
                               type="number"
+                              min="1"
                               max={item.maxQty}
                               value={item.returnQty}
-                              onChange={(e) => updateReturnQuantity(index, parseInt(e.target.value) )}
+                              onChange={(e) => updateReturnQuantity(index, parseInt(e.target.value))}
                               style={{ width: '80px' }}
                             />
                           </td>
                           <td>
-                            <Button 
-                              variant="danger" 
+                            <Button
+                              variant="danger"
                               size="sm"
                               onClick={() => removeSelectedItem(index)}
                             >
@@ -393,9 +429,9 @@ function ReturnItem({ onSave, Username = localStorage.getItem("fullname"), child
               <Col md="12">
                 <Form.Group>
                   <Form.Label><b>Note</b></Form.Label>
-                  <Form.Control 
-                    as="textarea" 
-                    rows={3} 
+                  <Form.Control
+                    as="textarea"
+                    rows={3}
                     ref={noteRef}
                     placeholder="Enter notes about the return..."
                   />
@@ -407,9 +443,9 @@ function ReturnItem({ onSave, Username = localStorage.getItem("fullname"), child
             <Button variant="secondary" onClick={handleClose}>
               <b>Close</b>
             </Button>
-            <Button 
-              type="submit" 
-              variant="success" 
+            <Button
+              type="submit"
+              variant="success"
               disabled={selectedItems.length === 0}
             >
               <b>Return Selected Items</b>

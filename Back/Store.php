@@ -546,13 +546,13 @@ else if ($action == "getLastSerialCount") {
     }
 
     // กำหนดรูปแบบการค้นหาด้วย wildcard ที่เฉพาะเจาะจงมากขึ้น
-    // สมมติว่ารูปแบบเลขซีเรียลคือ PREFIX + DATE + SEQUENCE
     $pattern = '%' . $date . '%';
 
     // ดึงข้อมูลจากทั้งสองตาราง
 
-    // 1. ดึงจาก tb_stock
-    $sql_stock = "SELECT serial_num FROM tb_stock WHERE serial_num LIKE ? ORDER BY serial_num DESC LIMIT 1";
+    // 1. ดึงจาก tb_stock - แก้ไขให้เรียงโดยไม่สนใจ 2 ตัวอักษรแรก
+    $sql_stock = "SELECT serial_num FROM tb_stock WHERE serial_num LIKE ? 
+                 ORDER BY SUBSTRING(serial_num, 3) DESC LIMIT 1";
     $stmt_stock = mysqli_prepare($link, $sql_stock);
 
     if (!$stmt_stock) {
