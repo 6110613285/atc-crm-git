@@ -100,7 +100,29 @@ function QuotationPage() {
       return cus_id;
     }
   };
-
+  const getProduct = async () => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SERVER}/Product.php?server=${
+          userInfo.server_db
+        }&username=${userInfo.username_db}&password=${
+          userInfo.password_db
+        }&db=db_atc_crm&action=get&table=tb_product`,
+        {
+          method: "GET",
+        }
+      );
+      const data = await res.json();
+      
+      if (data === null) {
+        setProducts([]);
+      } else {
+        setProducts(data);
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  };
   /* Get Customer Data */
   const [customers, setCustomers] = useState([]);
   const getCustomer = async (co_id) => {
@@ -150,7 +172,6 @@ function QuotationPage() {
       console.log(err);
     }
   };
-  /* Get Customer Data */
   /* Get Company Data */
   const [companies, setCompanies] = useState([]);
   const getCompany = async () => {
@@ -255,29 +276,7 @@ function QuotationPage() {
   /* Get Project Data */
   /* Get Product Data */
   const [products, setProducts] = useState([]);
-  const getProduct = async () => {
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_SERVER}/Product.php?server=${
-          userInfo.server_db
-        }&username=${userInfo.username_db}&password=${
-          userInfo.password_db
-        }&db=${userInfo.name_db}&action=get`,
-        {
-          method: "GET",
-        }
-      );
-      const data = await res.json();
-      //console.log(data);
-      if (data === null) {
-        setProducts([]);
-      } else {
-        setProducts(data);
-      }
-    } catch (err) {
-      console.log(err);
-    }
-  };
+  
   /* Get Product Data */
 
   const [validated, setValidated] = useState(false);
@@ -655,69 +654,88 @@ function QuotationPage() {
           <Typeahead
             id="basic-typeahead-single"
             labelKey="label"
+            allowNew={true}
+            newSelectionPrefix="Add: "
             onChange={async (selected) => {
               if (selected && selected.length > 0) {
-                const split = selected[0].value.split("|");
-                //console.log(split[1]);
-                await handleRowChange(split[0], rowIndex, "name");
-                await handleRowChange(split[1], rowIndex, "des"); //add description product
-                await handleRowChange(split[2], rowIndex, "price"); //add sell price product
+                if (selected[0].customOption) {
+                  // Handle custom input
+                  await handleRowChange(selected[0].label, rowIndex, "name");
+                  await handleRowChange("", rowIndex, "des");
+                  await handleRowChange("", rowIndex, "price");
+                } else {
+                  // Handle selected product
+                  const split = selected[0].value.split("|");
+                  await handleRowChange(split[0], rowIndex, "name");
+                  await handleRowChange(split[1], rowIndex, "des");
+                  await handleRowChange(split[2], rowIndex, "price");
+                }
               }
             }}
             options={products.map((product) => ({
               value: `${product.pd_id}-${product.pd_name}|${product.pd_description}|${product.pd_sellprice}`,
               label: `${product.pd_id}-${product.pd_name}`,
             }))}
-            placeholder="Select Product"
+            placeholder="Select or type product name"
           />
         </Form.Group>
-      </td>
+        </td>
 
-      <td>
-        <Form.Group as={Col} md="12">
-          <Form.Control required readOnly type="text" value={row.des} />
-        </Form.Group>
-      </td>
-      <td>
-        <Form.Group as={Col} md="12">
-          <Form.Control required readOnly type="number" value={row.price} />
-        </Form.Group>
-      </td>
-      <td>
-        <Form.Group as={Col} md="12">
-          <Form.Control
-            required
-            type="number"
-            value={row.qty}
-            onChange={async (e) => {
-              await handleRowChange(e.target.value, rowIndex, "qty");
-              await handleRowChange(
-                row.price * e.target.value,
-                rowIndex,
-                "sumprice"
-              );
-              await sumToTotalPrice();
-              if (discountRef.current.value !== "") {
-                await handleDiscountChange(discountRef.current.value);
-              } else if (percentDiscountRef.current.value !== "") {
-                await handlePercentChange(percentDiscountRef.current.value);
-              }
+        <td>
+          <Form.Group as={Col} md="12">
+            <Form.Control 
+              required 
+              type="text" 
+              value={row.des} 
+              onChange={(e) => handleRowChange(e.target.value, rowIndex, "des")}
+            />
+          </Form.Group>
+        </td>
+        <td>
+          <Form.Group as={Col} md="12">
+            <Form.Control 
+              required 
+              type="number" 
+              value={row.price} 
+              onChange={(e) => handleRowChange(e.target.value, rowIndex, "price")}
+            />
+          </Form.Group>
+        </td>
+        <td>
+          <Form.Group as={Col} md="12">
+            <Form.Control
+              required
+              type="number"
+              value={row.qty}
+              onChange={async (e) => {
+                await handleRowChange(e.target.value, rowIndex, "qty");
+                await handleRowChange(
+                  row.price * e.target.value,
+                  rowIndex,
+                  "sumprice"
+                );
+                await sumToTotalPrice();
+                if (discountRef.current.value !== "") {
+                  await handleDiscountChange(discountRef.current.value);
+                } else if (percentDiscountRef.current.value !== "") {
+                  await handlePercentChange(percentDiscountRef.current.value);
+                }
 
-              await calOverall();
-            }}
-          />
-        </Form.Group>
-      </td>
-      <td>
-        <Form.Group as={Col} md="12">
-          <Form.Control
-            required
-            readOnly
-            type="number"
-            defaultValue={row.sumprice}
-          />
-        </Form.Group>
-      </td>
+                await calOverall();
+              }}
+            />
+          </Form.Group>
+        </td>
+        <td>
+          <Form.Group as={Col} md="12">
+            <Form.Control
+              required
+              type="number"
+              value={row.sumprice}
+              onChange={(e) => handleRowChange(e.target.value, rowIndex, "sumprice")}
+            />
+          </Form.Group>
+        </td>
       <td className="d-flex justify-content-center">
         <button
           type="button"
@@ -1186,7 +1204,7 @@ function QuotationPage() {
                   <Table bordered hover className="mt-3">
                     <thead className="bg-dark text-light text-center">
                       <tr>
-                        <th>#</th>
+                        <th>No.</th>
                         <th>Name</th>
                         <th>Description</th>
                         <th>Price</th>

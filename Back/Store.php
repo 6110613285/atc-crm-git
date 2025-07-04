@@ -2420,14 +2420,6 @@ else if ($action == "addFixItem") {
 
 // ฟังก์ชันแก้ไข Fix Item
 else if ($action == "updateFixItem") {
-    $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-
-    if ($id <= 0) {
-        echo json_encode(array("status" => "error", "message" => "Invalid ID"));
-        mysqli_close($link);
-        return;
-    }
-
     // รับข้อมูลจาก GET parameters
     $status = isset($_GET['Status']) ? mysqli_real_escape_string($link, $_GET['Status']) : '';
     $location = isset($_GET['Location']) ? mysqli_real_escape_string($link, $_GET['Location']) : '';
@@ -2451,22 +2443,11 @@ else if ($action == "updateFixItem") {
         return;
     }
 
-    // ตรวจสอบว่า fixID ซ้ำกับรายการอื่นหรือไม่
-    $checkSQL = "SELECT id FROM tb_fixlist WHERE fixID = '$fixID' AND id != $id";
-    $checkResult = mysqli_query($link, $checkSQL);
-
-    if (mysqli_num_rows($checkResult) > 0) {
-        echo json_encode(array("status" => "error", "message" => "Fix ID already exists"));
-        mysqli_close($link);
-        return;
-    }
-
     // อัพเดทข้อมูล
-    $sql = "UPDATE `tb_fixlist` SET 
+    $sql = "INSERT `tb_fixlist` SET 
                 `Status` = '$status',
                 `Location` = '$location',
                 `date` = '$date',
-                `fixID` = '$fixID',
                 `Modal` = '$modal',
                 `Cpu` = '$cpu',
                 `Mainboard` = '$mainboard',
@@ -2477,7 +2458,7 @@ else if ($action == "updateFixItem") {
                 `equipinsite` = '$equipinsite',
                 `sender` = '$sender',
                 `receiver` = '$receiver'
-            WHERE id = $id";
+            WHERE `fixID` = $fixID";
 
     $result = mysqli_query($link, $sql);
 
@@ -2497,7 +2478,6 @@ else if ($action == "updateFixItem") {
 // ฟังก์ชันลบ Fix Item
 else if ($action == "deleteFixItem") {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-
     if ($id <= 0) {
         echo json_encode(array("status" => "error", "message" => "Invalid ID"));
         mysqli_close($link);

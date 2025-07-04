@@ -279,7 +279,7 @@ function FixListPage() {
     try {
       const action = editingItem ? 'updateFixItem' : 'addFixItem';
       const url = editingItem 
-        ? `${import.meta.env.VITE_SERVER}/Store.php?action=${action}&id=${editingItem.id}`
+        ? `${import.meta.env.VITE_SERVER}/Store.php?action=${action}&id=${formData.fixID}`
         : `${import.meta.env.VITE_SERVER}/Store.php?action=${action}`;
 
       const queryParams = new URLSearchParams(formData).toString();
