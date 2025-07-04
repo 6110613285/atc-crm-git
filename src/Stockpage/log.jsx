@@ -148,7 +148,6 @@ function LogHistory() {
             case 'Borrow':
                 return <ArrowRepeat className="me-1" />;
             case 'Return':
-            case 'Give Back':
                 return <ArrowReturnLeft className="me-1" />;
             default:
                 return <BoxSeamFill className="me-1" />;
@@ -206,17 +205,18 @@ function LogHistory() {
                     fontSize: "0.8rem"
                 };
             case 'Return':
-                return {
-                    backgroundColor: "#8bc34a",
-                    color: "#fff",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: "6px 12px",
-                    borderRadius: "20px",
-                    fontWeight: "500",
-                    fontSize: "0.8rem"
-                }; case 'Borrow':
+  return {
+    backgroundColor: "#8bc34a",
+    color: "#fff",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "6px 12px",
+    borderRadius: "20px",
+    fontWeight: "500",
+    fontSize: "0.8rem"
+  };
+            case 'Borrow':
                 return {
                     backgroundColor: "#ffc107",
                     color: "#fff",
@@ -367,7 +367,7 @@ function LogHistory() {
                                     <option value="OUT">OUT</option>
                                     <option value="Receive">Receive</option>
                                     <option value="Borrow">Borrow</option>
-                                    <option value="Give Back">Give Back</option>
+                                    <option value="Return">Return</option>
                                 </Form.Select>
                             </div>
 

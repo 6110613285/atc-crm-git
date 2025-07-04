@@ -1,388 +1,62 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Button, Modal, Form, Row, Col, ListGroup, Table } from "react-bootstrap";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { Button, Modal, Form, Row, Col, ListGroup, Table, Spinner, Alert } from "react-bootstrap";
 import Swal from "sweetalert2";
+import QrScanner from "../Stockpage/scan";
 
-function LoadIn({ onSave, Username = localStorage.getItem("fullname"), children }) {
+function LoadIn({ onSave, Username = "DefaultUser", children }) {
+  // Form validation state
   const [validated, setValidated] = useState(false);
   const [show, setShow] = useState(false);
+  
+  // Data states
   const [parts, setParts] = useState([]);
   const [locations, setLocations] = useState([]);
   const [serials, setSerials] = useState([]);
+  
+  // Selected items
   const [selectedPart, setSelectedPart] = useState(null);
   const [selectedLocation, setSelectedLocation] = useState(null);
+  const [selectedSerials, setSelectedSerials] = useState([{ serial: "", quantity: 1 }]);
+  
+  // Form inputs
   const [partName, setPartName] = useState('');
   const [supplier, setSupplier] = useState('');
   const [storeName, setStoreName] = useState('');
-  const [selectedSerials, setSelectedSerials] = useState([{ serial: "", quantity: 1 }]);
-
   const [partInput, setPartInput] = useState("");
   const [locationInput, setLocationInput] = useState("");
   const [serialInput, setSerialInput] = useState("");
+  
+  // Filtered data
   const [filteredParts, setFilteredParts] = useState([]);
   const [filteredLocations, setFilteredLocations] = useState([]);
   const [filteredSerials, setFilteredSerials] = useState([]);
+  
+  // Dropdown states
   const [showPartDropdown, setShowPartDropdown] = useState(false);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [showSerialDropdown, setShowSerialDropdown] = useState(false);
   const [activeSerialRow, setActiveSerialRow] = useState(null);
-
+  
+  // Loading and error states
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  
+  // Refs
   const locationInputRef = useRef(null);
   const serialInputRef = useRef(null);
-
-  const handleClose = () => {
-    setShow(false);
-    resetForm();
+  const refs = {
+    partNumRef: useRef(null),
+    partNameRef: useRef(null),
+    partTypeRef: useRef(null),
+    supplierRef: useRef(null),
+    qtyRef: useRef(null),
+    locationIdRef: useRef(null),
+    locationNameRef: useRef(null),
+    noteRef: useRef(null),
   };
 
-  const handleShow = () => {
-    setShow(true);
-    resetForm();
-  };
-
-  // เพิ่มฟังก์ชันสำหรับดึงข้อมูลจาก serial ที่ผู้ใช้กรอก
-  const handleSerialInputManual = (index, serialNumber) => {
-    // ถ้าไม่มี serial number หรือมีความยาวน้อยเกินไป ให้ข้าม
-    if (!serialNumber || serialNumber.length < 3) {
-      return;
-    }
-
-    // ค้นหา serial ในข้อมูลที่มีอยู่
-    const foundSerial = serials.find(serial =>
-      serial.part_no === serialNumber
-    );
-
-    if (foundSerial) {
-      // อัพเดทข้อมูลในช่อง serial ปัจจุบัน
-      const updatedSerials = [...selectedSerials];
-      updatedSerials[index] = {
-        ...updatedSerials[index],
-        serial: foundSerial.part_no,
-        part_num: foundSerial.part_num,
-        part_name: foundSerial.part_name,
-        supplier: foundSerial.supplier,
-        brand: foundSerial.brand,
-        quantity: foundSerial.qty || 1,
-        sup_serial: foundSerial.sup_serial || ''
-      };
-      setSelectedSerials(updatedSerials);
-
-      // ดึงข้อมูล Part
-      setPartInput(foundSerial.part_num || '');
-      setPartName(foundSerial.part_name || '');
-      setSupplier(foundSerial.supplier || '');
-
-      // หาข้อมูล Part ที่เกี่ยวข้องกับ Serial และเก็บไว้
-      const associatedPart = parts.find(p => p.part_num === foundSerial.part_num);
-      if (associatedPart) {
-        setSelectedPart(associatedPart);
-      } else {
-        // ถ้าไม่พบใน parts สร้างข้อมูลจาก serial
-        setSelectedPart({
-          part_num: foundSerial.part_num,
-          part_name: foundSerial.part_name,
-          supplier: foundSerial.supplier
-        });
-      }
-    } else {
-      // ถ้าไม่พบข้อมูล serial ในระบบ
-      // ต้องล้างข้อมูล part เพื่อป้องกันการใช้ข้อมูลผิด
-      const updatedSerials = [...selectedSerials];
-      updatedSerials[index] = {
-        ...updatedSerials[index],
-        serial: serialNumber,
-        part_num: '',
-        part_name: '',
-        supplier: '',
-        brand: '',
-        quantity: 1,
-        sup_serial: ''
-      };
-      setSelectedSerials(updatedSerials);
-
-      // แจ้งเตือนผู้ใช้ (อาจใช้ alert แบบเล็กแทน Swal เพื่อไม่ให้รบกวนการทำงาน)
-      console.warn(`Serial number ${serialNumber} not found in database`);
-    }
-
-  };
-
-  const resetForm = () => {
-    setValidated(false);
-    setSelectedPart(null);
-    setSelectedLocation(null);
-    setPartInput("");
-    setLocationInput("");
-    setSerialInput("");
-    setPartName("");
-    setSupplier("");
-    setStoreName("");
-    setSelectedSerials([{ serial: "", quantity: 1 }]);
-    setShowPartDropdown(false);
-    setShowLocationDropdown(false);
-    setShowSerialDropdown(false);
-    setActiveSerialRow(null);
-
-    // Reset all refs
-    Object.values(refs).forEach(ref => {
-      if (ref.current) {
-        ref.current.value = "";
-      }
-    });
-  };
-
-  useEffect(() => {
-    fetchParts();
-    fetchLocations();
-    fetchSerials();
-  }, []);
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (locationInputRef.current && !locationInputRef.current.contains(event.target)) {
-        setShowLocationDropdown(false);
-      }
-
-      // ตรวจสอบการคลิกนอก serial dropdowns
-      let clickedInside = false;
-
-      // ตรวจสอบการคลิกใน input fields
-      const serialInputs = document.querySelectorAll('[id^="serial-input-"]');
-      serialInputs.forEach(input => {
-        if (input.contains(event.target)) {
-          clickedInside = true;
-        }
-      });
-
-      // ตรวจสอบการคลิกใน dropdown buttons
-      const serialButtons = document.querySelectorAll('.serial-dropdown-btn');
-      serialButtons.forEach(button => {
-        if (button.contains(event.target)) {
-          clickedInside = true;
-        }
-      });
-
-      // ตรวจสอบการคลิกใน dropdown ที่กำลังแสดง
-      const serialDropdown = document.querySelector(".serial-dropdown");
-      if (serialDropdown && serialDropdown.contains(event.target)) {
-        clickedInside = true;
-      }
-
-      // ถ้าคลิกข้างนอก ให้ซ่อน dropdown
-      if (!clickedInside) {
-        setShowSerialDropdown(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (locationInput) {
-      const filtered = locations.filter(location =>
-        location.location_name.toLowerCase().includes(locationInput.toLowerCase())
-      );
-      setFilteredLocations(filtered);
-    } else {
-      setFilteredLocations(locations);
-    }
-  }, [locationInput, locations]);
-
-  useEffect(() => {
-    if (serialInput) {
-      const filtered = serials.filter(serial =>
-        serial.part_no.toLowerCase().includes(serialInput.toLowerCase()) ||
-        serial.part_num.toLowerCase().includes(serialInput.toLowerCase()) ||
-        (serial.part_name && serial.part_name.toLowerCase().includes(serialInput.toLowerCase()))
-      );
-      setFilteredSerials(filtered);
-    } else {
-      setFilteredSerials(serials);
-    }
-  }, [serialInput, serials]);
-
-  // ฟังก์ชันดึงข้อมูล parts
-  const fetchParts = async () => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_SERVER}/Store.php?action=getParts`);
-      const data = await response.json();
-      if (data) {
-        setParts(data);
-        setFilteredParts(data);
-      }
-    } catch (error) {
-      console.error("Error fetching parts:", error);
-    }
-  };
-
-  //ตะกร้า
-   const fetchBucket = async () => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_SERVER}/Store.php?action=getBucket`);
-      const data = await response.json();
-      if (data) {
-        setParts(data);
-        setFilteredParts(data);
-      }
-    } catch (error) {
-      console.error("Error fetching parts:", error);
-    }
-  };
-
-  // แก้ไขฟังก์ชันดึงข้อมูลจาก tb_location แทน tb_stores
-  const fetchLocations = async () => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_SERVER}/Store.php?action=getLo`);
-      const data = await response.json();
-      if (data) {
-        setLocations(data);
-        setFilteredLocations(data);
-      }
-    } catch (error) {
-      console.error("Error fetching locations:", error);
-    }
-  };
-
-  // เพิ่มฟังก์ชันดึงข้อมูล Serial Numbers
-  const fetchSerials = async () => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_SERVER}/Store.php?action=getSerials`);
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        // ถ้าข้อมูลไม่มี qty ให้กำหนดค่าเริ่มต้นเป็น 1
-        const serialsWithQty = data.map(serial => ({
-          ...serial,
-          qty: serial.qty || 1
-        }));
-        setSerials(serialsWithQty);
-        setFilteredSerials(serialsWithQty);
-      } else {
-        setSerials([]);
-        setFilteredSerials([]);
-      }
-    } catch (error) {
-      console.error("Error fetching serials:", error);
-      setSerials([]);
-      setFilteredSerials([]);
-    }
-  };
-
-  const handleLocationInputChange = (e) => {
-    setLocationInput(e.target.value);
-    setSelectedLocation(null);
-    setStoreName('');
-    setShowLocationDropdown(true);
-  };
-
-  const handleSerialInputChange = (e) => {
-    setSerialInput(e.target.value);
-    setShowSerialDropdown(true);
-  };
-
-  const handleLocationInputClick = () => {
-    setShowLocationDropdown(true);
-  };
-
-  const handleSerialInputClick = (index) => {
-    setSerialInput("");
-    setActiveSerialRow(index); // เก็บแถวที่กำลังแสดง dropdown
-    setShowSerialDropdown(true);
-    serialInputRef.current = { element: document.querySelector(`#serial-input-${index}`), index };
-  };
-
-  const handleLocationSelection = (location) => {
-    setLocationInput(location.location_name);
-    setStoreName(location.store_name || '');
-    setSelectedLocation(location);
-    setShowLocationDropdown(false);
-
-    // หลังจากเลือก Location แล้ว ให้ focus ไปที่ช่อง Serial Number แรก
-    setTimeout(() => {
-      const firstSerialInput = document.querySelector('#serial-input-0');
-      if (firstSerialInput) {
-        firstSerialInput.focus();
-      }
-    }, 100);
-  };
-
-  // ฟังก์ชันจัดการการเลือก Serial
-  const handleSerialSelection = (serial) => {
-    // ตรวจสอบว่ามี ref และ index ที่ถูกต้องหรือไม่
-    if (!serialInputRef.current || serialInputRef.current.index === undefined) {
-      return;
-    }
-
-    const index = serialInputRef.current.index;
-
-    // อัพเดตรายการ serial ที่ index ที่กำหนด และเพิ่ม quantity จาก database
-    const updatedSerials = [...selectedSerials];
-    updatedSerials[index] = {
-      ...updatedSerials[index],
-      serial: serial.part_no,
-      part_num: serial.part_num,
-      part_name: serial.part_name,
-      supplier: serial.supplier,
-      brand: serial.brand,
-      quantity: serial.qty || 1,
-      sup_serial: serial.sup_serial || ''
-    };
-    setSelectedSerials(updatedSerials);
-
-    // ดึงข้อมูล Part จาก Serial Number ที่เลือกและอัพเดต Part Information
-    setPartInput(serial.part_num || '');
-    setPartName(serial.part_name || '');
-    setSupplier(serial.supplier || '');
-
-    // หาข้อมูล Part ที่เกี่ยวข้องกับ Serial และเก็บไว้
-    const associatedPart = parts.find(p => p.part_num === serial.part_num);
-    if (associatedPart) {
-      setSelectedPart(associatedPart);
-    } else {
-      // ถ้าไม่พบใน parts สร้างข้อมูลจาก serial
-      setSelectedPart({
-        part_num: serial.part_num,
-        part_name: serial.part_name,
-        supplier: serial.supplier
-      });
-    }
-
-    setShowSerialDropdown(false);
-    setActiveSerialRow(null); // รีเซ็ตแถวที่กำลังทำงาน
-  };
-
-  // ฟังก์ชันสำหรับเพิ่มช่อง Serial เพิ่มเติม
-  const addSerialRow = () => {
-    const newSerials = [...selectedSerials, { serial: "", quantity: 1 }];
-    setSelectedSerials(newSerials);
-
-    // ใช้ setTimeout เพื่อให้แน่ใจว่า DOM ได้ render ก่อนที่จะพยายาม focus
-    setTimeout(() => {
-      const newRowIndex = newSerials.length - 1;
-      const newRowInput = document.querySelector(`#serial-input-${newRowIndex}`);
-      if (newRowInput) {
-        newRowInput.focus();
-      }
-    }, 0);
-  };
-
-  // ฟังก์ชันสำหรับลบช่อง Serial
-  const removeSerialRow = (index) => {
-    if (selectedSerials.length > 1) {
-      const updatedSerials = [...selectedSerials];
-      updatedSerials.splice(index, 1);
-      setSelectedSerials(updatedSerials);
-    }
-  };
-
-  // ฟังก์ชันสำหรับอัพเดตค่า quantity ของ Serial แต่ละรายการ
-  const updateSerialQuantity = (index, quantity) => {
-    const updatedSerials = [...selectedSerials];
-    updatedSerials[index].quantity = quantity;
-    setSelectedSerials(updatedSerials);
-  };
-
-  const getCurrentDateTime = () => {
+  // Helper functions
+  const getCurrentDateTime = useCallback(() => {
     const now = new Date();
     const options = {
       timeZone: 'Asia/Bangkok',
@@ -399,9 +73,356 @@ function LoadIn({ onSave, Username = localStorage.getItem("fullname"), children 
     const [date, time] = thailandTime.split(', ');
     const [month, day, year] = date.split('/');
     return `${year}-${month}-${day} ${time}`;
-  };
+  }, []);
 
-  const handleSubmit = async (event) => {
+  const resetForm = useCallback(() => {
+    setValidated(false);
+    setSelectedPart(null);
+    setSelectedLocation(null);
+    setPartInput("");
+    setLocationInput("");
+    setSerialInput("");
+    setPartName("");
+    setSupplier("");
+    setStoreName("");
+    setSelectedSerials([{ serial: "", quantity: 1 }]);
+    setShowPartDropdown(false);
+    setShowLocationDropdown(false);
+    setShowSerialDropdown(false);
+    setActiveSerialRow(null);
+    setError(null);
+
+    // Reset all refs
+    Object.values(refs).forEach(ref => {
+      if (ref.current) {
+        ref.current.value = "";
+      }
+    });
+  }, []);
+
+  // Modal handlers
+  const handleClose = useCallback(() => {
+    setShow(false);
+    resetForm();
+  }, [resetForm]);
+
+  const handleShow = useCallback(() => {
+    setShow(true);
+    resetForm();
+  }, [resetForm]);
+
+  // API calls
+  const fetchParts = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${import.meta.env.VITE_SERVER}/Store.php?action=getParts`);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      if (data) {
+        setParts(data);
+        setFilteredParts(data);
+      }
+    } catch (error) {
+      console.error("Error fetching parts:", error);
+      setError("Failed to fetch parts data");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchLocations = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${import.meta.env.VITE_SERVER}/Store.php?action=getLo`);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      if (data) {
+        setLocations(data);
+        setFilteredLocations(data);
+      }
+    } catch (error) {
+      console.error("Error fetching locations:", error);
+      setError("Failed to fetch locations data");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchSerials = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${import.meta.env.VITE_SERVER}/Store.php?action=getSerials`);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        const serialsWithQty = data.map(serial => ({
+          ...serial,
+          qty: serial.qty || 1
+        }));
+        setSerials(serialsWithQty);
+        setFilteredSerials(serialsWithQty);
+      } else {
+        setSerials([]);
+        setFilteredSerials([]);
+      }
+    } catch (error) {
+      console.error("Error fetching serials:", error);
+      setError("Failed to fetch serials data");
+      setSerials([]);
+      setFilteredSerials([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Serial handling functions
+  const handleSerialInputManual = useCallback((index, serialNumber) => {
+    if (!serialNumber || serialNumber.length < 3) {
+      return;
+    }
+
+    const foundSerial = serials.find(serial =>
+      serial.part_no === serialNumber
+    );
+
+    if (foundSerial) {
+      setSelectedSerials(prev => {
+        const updated = [...prev];
+        updated[index] = {
+          ...updated[index],
+          serial: foundSerial.part_no,
+          part_num: foundSerial.part_num,
+          part_name: foundSerial.part_name,
+          supplier: foundSerial.supplier,
+          brand: foundSerial.brand,
+          quantity: foundSerial.qty || 1,
+          sup_serial: foundSerial.sup_serial || ''
+        };
+        return updated;
+      });
+
+      setPartInput(foundSerial.part_num || '');
+      setPartName(foundSerial.part_name || '');
+      setSupplier(foundSerial.supplier || '');
+
+      const associatedPart = parts.find(p => p.part_num === foundSerial.part_num);
+      if (associatedPart) {
+        setSelectedPart(associatedPart);
+      } else {
+        setSelectedPart({
+          part_num: foundSerial.part_num,
+          part_name: foundSerial.part_name,
+          supplier: foundSerial.supplier
+        });
+      }
+    } else {
+      setSelectedSerials(prev => {
+        const updated = [...prev];
+        updated[index] = {
+          ...updated[index],
+          serial: serialNumber,
+          part_num: '',
+          part_name: '',
+          supplier: '',
+          brand: '',
+          quantity: 1,
+          sup_serial: ''
+        };
+        return updated;
+      });
+      console.warn(`Serial number ${serialNumber} not found in database`);
+    }
+  }, [serials, parts]);
+
+  const addSerialRow = useCallback(() => {
+    setSelectedSerials(prev => [...prev, { serial: "", quantity: 1 }]);
+    
+    // Focus on new input after DOM update
+    setTimeout(() => {
+      const newRowIndex = selectedSerials.length;
+      const newRowInput = document.querySelector(`#serial-input-${newRowIndex}`);
+      if (newRowInput) {
+        newRowInput.focus();
+        newRowInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+  }, [selectedSerials.length]);
+
+  const removeSerialRow = useCallback((index) => {
+    if (selectedSerials.length > 1) {
+      setSelectedSerials(prev => {
+        const updated = [...prev];
+        updated.splice(index, 1);
+        return updated;
+      });
+    }
+  }, [selectedSerials.length]);
+
+  const updateSerialQuantity = useCallback((index, quantity) => {
+    setSelectedSerials(prev => {
+      const updated = [...prev];
+      updated[index].quantity = quantity;
+      return updated;
+    });
+  }, []);
+
+  // Location handlers
+  const handleLocationInputChange = useCallback((e) => {
+    setLocationInput(e.target.value);
+    setSelectedLocation(null);
+    setStoreName('');
+    setShowLocationDropdown(true);
+  }, []);
+
+  const handleLocationInputClick = useCallback(() => {
+    setShowLocationDropdown(true);
+  }, []);
+
+  const handleLocationSelection = useCallback((location) => {
+    setLocationInput(location.location_name);
+    setStoreName(location.store_name || '');
+    setSelectedLocation(location);
+    setShowLocationDropdown(false);
+
+    setTimeout(() => {
+      const firstSerialInput = document.querySelector('#serial-input-0');
+      if (firstSerialInput) {
+        firstSerialInput.focus();
+      }
+    }, 100);
+  }, []);
+
+  // Serial dropdown handlers
+  const handleSerialInputChange = useCallback((e) => {
+    setSerialInput(e.target.value);
+    setShowSerialDropdown(true);
+  }, []);
+
+  const handleSerialInputClick = useCallback((index) => {
+    setSerialInput("");
+    setActiveSerialRow(index);
+    setShowSerialDropdown(true);
+    serialInputRef.current = { 
+      element: document.querySelector(`#serial-input-${index}`), 
+      index 
+    };
+  }, []);
+
+  const handleSerialSelection = useCallback((serial) => {
+    if (!serialInputRef.current || serialInputRef.current.index === undefined) {
+      return;
+    }
+
+    const index = serialInputRef.current.index;
+    handleSerialInputManual(index, serial.part_no);
+    setShowSerialDropdown(false);
+    setActiveSerialRow(null);
+  }, [handleSerialInputManual]);
+
+  // QR Scanner handler
+  const handleQRScan = useCallback((index, result) => {
+    setSelectedSerials(prev => {
+      const updated = [...prev];
+      updated[index].serial = result;
+      return updated;
+    });
+
+    handleSerialInputManual(index, result);
+
+    // Auto-advance to next row or create new row
+    setTimeout(() => {
+      if (index === selectedSerials.length - 1) {
+        addSerialRow();
+      } else {
+        const nextRowInput = document.querySelector(`#serial-input-${index + 1}`);
+        if (nextRowInput) {
+          nextRowInput.focus();
+        }
+      }
+    }, 500);
+  }, [selectedSerials.length, handleSerialInputManual, addSerialRow]);
+
+  // Serial input key handler
+  const handleSerialKeyDown = useCallback((e, index) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSerialInputManual(index, e.target.value);
+
+      setTimeout(() => {
+        if (index === selectedSerials.length - 1 && e.target.value.trim()) {
+          addSerialRow();
+        } else if (index < selectedSerials.length - 1) {
+          const nextRowInput = document.querySelector(`#serial-input-${index + 1}`);
+          if (nextRowInput) {
+            nextRowInput.focus();
+          }
+        }
+      }, 200);
+    }
+  }, [selectedSerials.length, handleSerialInputManual, addSerialRow]);
+
+  // Form submission
+  const saveLogEntry = useCallback(async (serialItem) => {
+    try {
+      const queryString =
+        `${import.meta.env.VITE_SERVER}/Store.php?action=insertLogProduct` +
+        `&date=${encodeURIComponent(getCurrentDateTime())}` +
+        `&uname=${encodeURIComponent(Username)}` +
+        `&partnum=${encodeURIComponent(serialItem.part_num || (selectedPart ? selectedPart.part_num : ''))}` +
+        `&partname=${encodeURIComponent(serialItem.part_name || partName)}` +
+        `&supplier=${encodeURIComponent(serialItem.supplier || supplier)}` +
+        `&qty=${encodeURIComponent(serialItem.quantity)}` +
+        `&location=${encodeURIComponent(selectedLocation.location_name)}` +
+        `&storename=${encodeURIComponent(selectedLocation.store_name)}` +
+        `&note=${encodeURIComponent(refs.noteRef.current?.value || '')}` +
+        `&status=${encodeURIComponent("IN")}` +
+        `&serial_num=${encodeURIComponent(serialItem.serial || '')}`;
+
+      const res = await fetch(queryString, { method: "POST" });
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      
+      const data = await res.json();
+      if (data !== "ok") {
+        throw new Error("Failed to save log entry");
+      }
+    } catch (err) {
+      console.error('Error saving log entry:', err);
+      throw err;
+    }
+  }, [getCurrentDateTime, Username, selectedPart, partName, supplier, selectedLocation]);
+
+  const updateStock = useCallback(async (serialItem) => {
+    try {
+      const queryString =
+        `${import.meta.env.VITE_SERVER}/Store.php?action=updateStock` +
+        `&date=${encodeURIComponent(getCurrentDateTime())}` +
+        `&uname=${encodeURIComponent(Username)}` +
+        `&partnum=${encodeURIComponent(serialItem.part_num || (selectedPart ? selectedPart.part_num : ''))}` +
+        `&partname=${encodeURIComponent(serialItem.part_name || partName)}` +
+        `&supplier=${encodeURIComponent(serialItem.supplier || supplier)}` +
+        `&qty=${encodeURIComponent(serialItem.quantity)}` +
+        `&location=${encodeURIComponent(selectedLocation.location_name)}` +
+        `&storename=${encodeURIComponent(selectedLocation.store_name)}` +
+        `&note=${encodeURIComponent(refs.noteRef.current?.value || '')}` +
+        `&status=${encodeURIComponent("IN")}` +
+        `&serial_num=${encodeURIComponent(serialItem.serial || '')}` +
+        `&sup_serial=${encodeURIComponent(serialItem.sup_serial || '')}` +
+        `&sup_bar=${encodeURIComponent(serialItem.sup_part_number || '')}`;
+
+      const res = await fetch(queryString, { method: "POST" });
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      
+      const data = await res.json();
+      if (data !== "ok") {
+        throw new Error("Failed to update stock");
+      }
+    } catch (err) {
+      console.error('Error updating stock:', err);
+      throw err;
+    }
+  }, [getCurrentDateTime, Username, selectedPart, partName, supplier, selectedLocation]);
+
+  const handleSubmit = useCallback(async (event) => {
     event.preventDefault();
     event.stopPropagation();
 
@@ -411,7 +432,6 @@ function LoadIn({ onSave, Username = localStorage.getItem("fullname"), children 
       return;
     }
 
-    // ตรวจสอบว่าได้เลือก Location หรือไม่
     if (!selectedLocation) {
       Swal.fire({
         position: "center",
@@ -423,7 +443,6 @@ function LoadIn({ onSave, Username = localStorage.getItem("fullname"), children 
       return;
     }
 
-    // ตรวจสอบว่ามี Serial ที่เลือกหรือไม่
     if (selectedSerials.length === 0 || selectedSerials.some(item => !item.serial)) {
       Swal.fire({
         position: "center",
@@ -436,7 +455,7 @@ function LoadIn({ onSave, Username = localStorage.getItem("fullname"), children 
     }
 
     try {
-      // บันทึก Log และอัพเดท Stock สำหรับแต่ละ Serial
+      setLoading(true);
       for (const serialItem of selectedSerials) {
         await saveLogEntry(serialItem);
         await updateStock(serialItem);
@@ -460,83 +479,79 @@ function LoadIn({ onSave, Username = localStorage.getItem("fullname"), children 
         showConfirmButton: false,
         timer: 2000,
       });
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [selectedLocation, selectedSerials, saveLogEntry, updateStock, onSave]);
 
-  // แก้ไขฟังก์ชันสำหรับบันทึกลง tb_log_product
-  const saveLogEntry = async (serialItem) => {
-    try {
-      const queryString =
-        `${import.meta.env.VITE_SERVER}/Store.php?action=insertLogProduct` +
-        `&date=${encodeURIComponent(getCurrentDateTime())}` +
-        `&uname=${encodeURIComponent(Username)}` +
-        `&partnum=${encodeURIComponent(serialItem.part_num || (selectedPart ? selectedPart.part_num : ''))}` +
-        `&partname=${encodeURIComponent(serialItem.part_name || partName)}` +
-        `&supplier=${encodeURIComponent(serialItem.supplier || supplier)}` +
-        `&qty=${encodeURIComponent(serialItem.quantity)}` +
-        `&location=${encodeURIComponent(selectedLocation.location_name)}` +
-        `&storename=${encodeURIComponent(selectedLocation.store_name)}` +
-        `&note=${encodeURIComponent(refs.noteRef.current.value || '')}` +
-        `&status=${encodeURIComponent("IN")}` +
-        `&serial_num=${encodeURIComponent(serialItem.serial || '')}`;
+  // Memoized filtered data
+  const memoizedFilteredLocations = useMemo(() => {
+    if (locationInput) {
+      return locations.filter(location =>
+        location.location_name.toLowerCase().includes(locationInput.toLowerCase())
+      );
+    }
+    return locations;
+  }, [locationInput, locations]);
 
-      const res = await fetch(queryString, {
-        method: "POST",
+  const memoizedFilteredSerials = useMemo(() => {
+    if (serialInput) {
+      return serials.filter(serial =>
+        serial.part_no.toLowerCase().includes(serialInput.toLowerCase()) ||
+        serial.part_num.toLowerCase().includes(serialInput.toLowerCase()) ||
+        (serial.part_name && serial.part_name.toLowerCase().includes(serialInput.toLowerCase()))
+      );
+    }
+    return serials;
+  }, [serialInput, serials]);
+
+  // Effects
+  useEffect(() => {
+    fetchParts();
+    fetchLocations();
+    fetchSerials();
+  }, [fetchParts, fetchLocations, fetchSerials]);
+
+  useEffect(() => {
+    setFilteredLocations(memoizedFilteredLocations);
+  }, [memoizedFilteredLocations]);
+
+  useEffect(() => {
+    setFilteredSerials(memoizedFilteredSerials);
+  }, [memoizedFilteredSerials]);
+
+  // Click outside handler
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (locationInputRef.current && !locationInputRef.current.contains(event.target)) {
+        setShowLocationDropdown(false);
+      }
+
+      let clickedInside = false;
+      const serialInputs = document.querySelectorAll('[id^="serial-input-"]');
+      const serialButtons = document.querySelectorAll('.serial-dropdown-btn');
+      const serialDropdown = document.querySelector(".serial-dropdown");
+
+      serialInputs.forEach(input => {
+        if (input.contains(event.target)) clickedInside = true;
       });
 
-      const data = await res.json();
-      if (data !== "ok") {
-        throw new Error("Failed to save log entry");
-      }
-    } catch (err) {
-      console.error('Error details:', err);
-      throw err;
-    }
-  };
-
-  // แก้ไขฟังก์ชันสำหรับอัพเดท stock
-  const updateStock = async (serialItem) => {
-    try {
-      const queryString =
-        `${import.meta.env.VITE_SERVER}/Store.php?action=updateStock` +
-        `&date=${encodeURIComponent(getCurrentDateTime())}` +
-        `&uname=${encodeURIComponent(Username)}` +
-        `&partnum=${encodeURIComponent(serialItem.part_num || (selectedPart ? selectedPart.part_num : ''))}` +
-        `&partname=${encodeURIComponent(serialItem.part_name || partName)}` +
-        `&supplier=${encodeURIComponent(serialItem.supplier || supplier)}` +
-        `&qty=${encodeURIComponent(serialItem.quantity)}` +
-        `&location=${encodeURIComponent(selectedLocation.location_name)}` +
-        `&storename=${encodeURIComponent(selectedLocation.store_name)}` +
-        `&note=${encodeURIComponent(refs.noteRef.current.value || '')}` +
-        `&status=${encodeURIComponent("IN")}` +
-        `&serial_num=${encodeURIComponent(serialItem.serial || '')}` +
-        `&sup_serial=${encodeURIComponent(serialItem.sup_serial || '')}` +
-        `&sup_bar=${encodeURIComponent(serialItem.sup_part_number || '')}` ;
-
-      const res = await fetch(queryString, {
-        method: "POST",
+      serialButtons.forEach(button => {
+        if (button.contains(event.target)) clickedInside = true;
       });
-      const data = await res.json();
-      if (data !== "ok") {
-        throw new Error("Failed to update stock");
-      }
-    } catch (err) {
-      console.error(err);
-      throw err;
-    }
-  };
 
-  // Refs for form fields
-  const refs = {
-    partNumRef: useRef(null),
-    partNameRef: useRef(null),
-    partTypeRef: useRef(null),
-    supplierRef: useRef(null),
-    qtyRef: useRef(null),
-    locationIdRef: useRef(null),
-    locationNameRef: useRef(null),
-    noteRef: useRef(null),
-  };
+      if (serialDropdown && serialDropdown.contains(event.target)) {
+        clickedInside = true;
+      }
+
+      if (!clickedInside) {
+        setShowSerialDropdown(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <div className="d-flex justify-content-end">
@@ -552,8 +567,22 @@ function LoadIn({ onSave, Username = localStorage.getItem("fullname"), children 
             </Modal.Title>
           </Modal.Header>
           <Modal.Body>
+            {error && (
+              <Alert variant="danger" dismissible onClose={() => setError(null)}>
+                {error}
+              </Alert>
+            )}
+            
+            {loading && (
+              <div className="text-center mb-3">
+                <Spinner animation="border" role="status" size="sm">
+                  <span className="visually-hidden">Loading...</span>
+                </Spinner>
+              </div>
+            )}
+
             <Row className="mb-3">
-              {/* ย้าย Location ขึ้นมาเป็นฟิลด์แรก */}
+              {/* Location Field */}
               <Form.Group as={Col} md="12" className="mb-3" ref={locationInputRef}>
                 <Form.Label><b>Location</b></Form.Label>
                 <div className="input-group">
@@ -596,24 +625,13 @@ function LoadIn({ onSave, Username = localStorage.getItem("fullname"), children 
                     ) : (
                       <ListGroup.Item>
                         No matching locations found
-                        <Button
-                          variant="link"
-                          className="w-100 text-primary mt-1"
-                          onClick={() => {
-                            setShowLocationDropdown(false);
-                            // เรียกใช้ component AddLocation
-                          }}
-                        >
-                          <i className="fas fa-plus-circle me-1"></i>
-                          Click to add new location
-                        </Button>
                       </ListGroup.Item>
                     )}
                   </ListGroup>
                 )}
               </Form.Group>
 
-              {/* ย้าย Store Name ขึ้นมา */}
+              {/* Store Name Field */}
               <Form.Group as={Col} md="12" className="mb-3">
                 <Form.Label><b>Store Name</b></Form.Label>
                 <Form.Control
@@ -624,14 +642,14 @@ function LoadIn({ onSave, Username = localStorage.getItem("fullname"), children 
                 />
               </Form.Group>
 
-              {/* ย้าย Serial Numbers ขึ้นมาเป็นอันดับที่สอง */}
+              {/* Serial Numbers Table */}
               <Form.Group as={Col} md="12" className="mb-3">
                 <div className="d-flex justify-content-between align-items-center mb-2">
                   <Form.Label><b>Serial Numbers</b></Form.Label>
                   <Button
                     variant="success"
                     size="sm"
-                    className="add-serial-btn" // เพิ่ม class นี้
+                    className="add-serial-btn"
                     onClick={addSerialRow}
                   >
                     <i className="fas fa-plus"></i> Add Serial
@@ -652,63 +670,67 @@ function LoadIn({ onSave, Username = localStorage.getItem("fullname"), children 
                     {selectedSerials.map((item, index) => (
                       <tr key={index}>
                         <td>
-                          <div className="input-group input-group-sm">
-                            <Form.Control
-                              required
-                              type="text"
-                              id={`serial-input-${index}`}
-                              value={item.serial}
-                              onChange={(e) => {
-                                const serialValue = e.target.value;
-                                const updatedSerials = [...selectedSerials];
-                                updatedSerials[index].serial = serialValue;
-                                setSelectedSerials(updatedSerials);
+  <div className="d-flex align-items-center gap-2">
+    {/* Serial Input Section */}
+    <div className="flex-grow-1">
+      <div className="input-group input-group-sm">
+        <Form.Control
+          required
+          type="text"
+          id={`serial-input-${index}`}
+          value={item.serial}
+          onChange={(e) => {
+            const serialValue = e.target.value;
+            setSelectedSerials(prev => {
+              const updated = [...prev];
+              updated[index].serial = serialValue;
+              return updated;
+            });
 
-                                // เพิ่มเรียกใช้ฟังก์ชันดึงข้อมูล serial
-                                handleSerialInputManual(index, serialValue);
-                              }}
-                              onBlur={(e) => {
-                                // ตรวจสอบอีกครั้งเมื่อออกจากช่อง (blur)
-                                handleSerialInputManual(index, e.target.value);
-                              }}
-                              onKeyDown={(e) => {
-                                // เมื่อกด Enter ในช่อง Serial
-                                if (e.key === 'Enter') {
-                                  e.preventDefault(); // ป้องกันการ submit form
+            if (serialValue.length >= 3) {
+              handleSerialInputManual(index, serialValue);
+            }
+          }}
+          onBlur={(e) => {
+            handleSerialInputManual(index, e.target.value);
+          }}
+          onKeyDown={(e) => handleSerialKeyDown(e, index)}
+          placeholder="Enter Serial..."
+          className={`form-control ${item.part_num ? 'is-valid' : ''}`}
+          style={{ fontSize: '0.875rem' }}
+        />
+        
+        {item.part_num && (
+          <div className="input-group-append">
+            <span className="input-group-text bg-success text-white">
+              <i className="fas fa-check"></i>
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
 
-                                  // ตรวจสอบข้อมูล serial ที่กรอก
-                                  handleSerialInputManual(index, e.target.value);
+    {/* QR Scanner Button */}
+    <div className="flex-shrink-0">
+      <QrScanner
+        buttonOnly={true}
+        readerId={`reader-${index}`}
+        onScan={(result) => handleQRScan(index, result)}
+      />
+    </div>
+  </div>
 
-                                  // ถ้าเป็นรายการสุดท้าย ให้เรียกฟังก์ชัน addSerialRow() เหมือนการกดปุ่ม "Add Serial"
-                                  if (index === selectedSerials.length - 1) {
-                                    // จำลองการคลิกที่ปุ่ม Add Serial
-                                    const addButton = document.querySelector('.add-serial-btn');
-                                    if (addButton) {
-                                      addButton.click(); // จำลองการคลิกที่ปุ่ม
-                                    } else {
-                                      // ถ้าไม่พบปุ่ม ก็เรียกฟังก์ชันตรงๆ
-                                      addSerialRow();
-                                    }
-                                  } else {
-                                    // ถ้าไม่ใช่รายการสุดท้าย ให้ focus ไปที่ช่อง serial ของรายการถัดไป
-                                    const nextRowInput = document.querySelector(`#serial-input-${index + 1}`);
-                                    if (nextRowInput) {
-                                      nextRowInput.focus();
-                                    }
-                                  }
-                                }
-                              }}
-                              placeholder="Enter Serial..."
-                            />
-
-                          </div>
-                        </td>
+  {/* QR Reader Area - Hidden by default, will show when scanning */}
+  <div id={`reader-${index}`} className="mx-auto mt-2" style={{ width: "250px" }}></div>
+</td>
+                        
                         <td>
                           <Form.Control
                             size="sm"
                             type="text"
                             value={item.part_num || ''}
                             readOnly
+                            className={item.part_num ? 'bg-light' : ''}
                           />
                         </td>
                         <td>
@@ -717,6 +739,7 @@ function LoadIn({ onSave, Username = localStorage.getItem("fullname"), children 
                             type="text"
                             value={item.part_name || ''}
                             readOnly
+                            className={item.part_name ? 'bg-light' : ''}
                           />
                         </td>
                         <td>
@@ -748,18 +771,40 @@ function LoadIn({ onSave, Username = localStorage.getItem("fullname"), children 
                 </Table>
               </Form.Group>
 
+              {/* Note Field */}
               <Form.Group as={Col} md="12" className="mb-3">
                 <Form.Label><b>Note</b></Form.Label>
-                <Form.Control type="text" ref={refs.noteRef} placeholder="บันทึกเพิ่มเติม (ไม่บังคับ)" />
+                <Form.Control 
+                  type="text" 
+                  ref={refs.noteRef} 
+                  placeholder="บันทึกเพิ่มเติม (ไม่บังคับ)" 
+                />
               </Form.Group>
             </Row>
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" onClick={handleClose}>
+            <Button variant="secondary" onClick={handleClose} disabled={loading}>
               <b>Close</b>
             </Button>
-            <Button type="submit" variant="success" disabled={!selectedLocation}>
-              <b>Save</b>
+            <Button 
+              type="submit" 
+              variant="success" 
+              disabled={!selectedLocation || loading}
+            >
+              {loading ? (
+                <>
+                  <Spinner
+                    as="span"
+                    animation="border"
+                    size="sm"
+                    role="status"
+                    className="me-2"
+                  />
+                  Saving...
+                </>
+              ) : (
+                <b>Save</b>
+              )}
             </Button>
           </Modal.Footer>
         </Form>

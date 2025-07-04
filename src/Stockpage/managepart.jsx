@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import { FormControl, Button, Table, Tabs, Tab, Card, Badge, Container, Alert } from "react-bootstrap";
+import { FormControl, Button, Table, Tabs, Tab, Card, Badge, Container, Alert, ListGroup, Modal } from "react-bootstrap";
 import PaginationComponent from "../components/PaginationComponent";
 import Addpart from "../Stockpage/addpart";
+import Upimage from "../Stockpage/Upimage";
 import Swal from "sweetalert2";
 
 import EditModal from "../Stockpage/EditModal";
-import { Pencil } from "react-bootstrap-icons"; //เรียกใช้ react-bootstrap-icons
+import { Pencil } from "react-bootstrap-icons";
 import { 
   Search, 
   XCircle, 
@@ -16,7 +17,15 @@ import {
 
 function ManageSerialPage() {
   const searchRef = useRef(null);
+  const searchContainerRef = useRef(null);
   const [parts, setParts] = useState([]);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  
+  // สถานะสำหรับการค้นหาแบบใหม่
+  const [searchTerm, setSearchTerm] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
 
   // สถานะสำหรับการแบ่งหน้า
   const [currentPartPageData, setCurrentPartPageData] = useState([]);
@@ -45,27 +54,164 @@ function ManageSerialPage() {
     }
   };
 
-  // ค้นหา parts
-  const searchParts = async () => {
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_SERVER}/Store.php?action=searchParts&search=${
-          searchRef.current.value || ""
-        }`,
-        {
-          method: "GET",
-        }
-      );
-      const data = await res.json();
-      if (data === null) {
-        setParts([]);
-      } else {
-        setParts(data);
-      }
-    } catch (err) {
-      console.log(err);
-      setParts([]);
+  // สร้าง suggestions
+  const generateSuggestions = (input) => {
+    if (!input || input.length < 1) {
+      setSuggestions([]);
+      return;
     }
+
+    const searchInput = input.toLowerCase();
+    const allSuggestions = [];
+    const uniqueItems = new Set();
+
+    parts.forEach(part => {
+      // ตรวจสอบ part_name
+      if (part.part_name?.toLowerCase().includes(searchInput) && !uniqueItems.has(part.part_name)) {
+        allSuggestions.push({
+          text: part.part_name,
+          type: 'Part Name',
+          icon: '📦'
+        });
+        uniqueItems.add(part.part_name);
+      }
+
+      // ตรวจสอบ part_num
+      if (part.part_num?.toLowerCase().includes(searchInput) && !uniqueItems.has(part.part_num)) {
+        allSuggestions.push({
+          text: part.part_num,
+          type: 'Part Number',
+          icon: '🔢'
+        });
+        uniqueItems.add(part.part_num);
+      }
+
+      // ตรวจสอบ part_type
+      if (part.part_type?.toLowerCase().includes(searchInput) && !uniqueItems.has(part.part_type)) {
+        allSuggestions.push({
+          text: part.part_type,
+          type: 'Type Prefix',
+          icon: '🏷️'
+        });
+        uniqueItems.add(part.part_type);
+      }
+
+      // ตรวจสอบ supplier
+      if (part.supplier?.toLowerCase().includes(searchInput) && !uniqueItems.has(part.supplier)) {
+        allSuggestions.push({
+          text: part.supplier,
+          type: 'Supplier',
+          icon: '🏭'
+        });
+        uniqueItems.add(part.supplier);
+      }
+
+      // ตรวจสอบ brand
+      if (part.brand?.toLowerCase().includes(searchInput) && !uniqueItems.has(part.brand)) {
+        allSuggestions.push({
+          text: part.brand,
+          type: 'Brand',
+          icon: '🏪'
+        });
+        uniqueItems.add(part.brand);
+      }
+    });
+
+    // จำกัดจำนวน suggestions เป็น 8 รายการ
+    setSuggestions(allSuggestions.slice(0, 8));
+  };
+
+  // จัดการการเปลี่ยนแปลงใน input
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    if (searchRef.current) {
+      searchRef.current.value = value;
+    }
+    generateSuggestions(value);
+    setShowSuggestions(true);
+    setSelectedSuggestionIndex(-1);
+  };
+
+  // เลือก suggestion
+  const selectSuggestion = (suggestion) => {
+    setSearchTerm(suggestion.text);
+    if (searchRef.current) {
+      searchRef.current.value = suggestion.text;
+    }
+    setShowSuggestions(false);
+    setSelectedSuggestionIndex(-1);
+    
+    // ทำการค้นหาทันทีเมื่อเลือก suggestion
+    const filteredData = parts.filter(part =>
+      part.part_name?.toLowerCase().includes(suggestion.text.toLowerCase()) ||
+      part.part_num?.toLowerCase().includes(suggestion.text.toLowerCase()) ||
+      part.part_type?.toLowerCase().includes(suggestion.text.toLowerCase()) ||
+      part.supplier?.toLowerCase().includes(suggestion.text.toLowerCase()) ||
+      part.brand?.toLowerCase().includes(suggestion.text.toLowerCase()) ||
+      part.part_detail?.toLowerCase().includes(suggestion.text.toLowerCase())
+    );
+    paginateParts(1, filteredData);
+  };
+
+  // จัดการ keyboard navigation
+  const handleKeyDown = (e) => {
+    if (!showSuggestions || suggestions.length === 0) {
+      if (e.key === 'Enter') {
+        handleSearch();
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev => 
+          prev < suggestions.length - 1 ? prev + 1 : 0
+        );
+        break;
+        
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev => 
+          prev > 0 ? prev - 1 : suggestions.length - 1
+        );
+        break;
+        
+      case 'Enter':
+        e.preventDefault();
+        if (selectedSuggestionIndex >= 0 && selectedSuggestionIndex < suggestions.length) {
+          selectSuggestion(suggestions[selectedSuggestionIndex]);
+        } else {
+          handleSearch();
+        }
+        break;
+        
+      case 'Escape':
+        setShowSuggestions(false);
+        setSelectedSuggestionIndex(-1);
+        break;
+        
+      default:
+        break;
+    }
+  };
+
+  // ค้นหา parts
+  const handleSearch = () => {
+    const searchTerm = searchRef.current?.value?.toLowerCase().trim() || "";
+    setShowSuggestions(false);
+    setSelectedSuggestionIndex(-1);
+
+    const filteredData = parts.filter(part =>
+      part.part_name?.toLowerCase().includes(searchTerm) ||
+      part.part_num?.toLowerCase().includes(searchTerm) ||
+      part.part_type?.toLowerCase().includes(searchTerm) ||
+      part.supplier?.toLowerCase().includes(searchTerm) ||
+      part.brand?.toLowerCase().includes(searchTerm) ||
+      part.part_detail?.toLowerCase().includes(searchTerm)
+    );
+    paginateParts(1, filteredData);
   };
 
   // ลบ part
@@ -112,12 +258,27 @@ function ManageSerialPage() {
 
   // ===== ฟังก์ชันแบ่งหน้า =====
   // แบ่งหน้าสำหรับข้อมูล parts
-  const paginateParts = (pageNumber) => {
+  const paginateParts = (pageNumber, data = parts) => {
     const startIndex = (pageNumber - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    setCurrentPartPageData(parts.slice(startIndex, endIndex));
+    setCurrentPartPageData(data.slice(startIndex, endIndex));
     setCurrentPartPage(pageNumber);
   };
+
+  // ปิด suggestions เมื่อคลิกข้างนอก
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+        setSelectedSuggestionIndex(-1);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // ดึงข้อมูลเมื่อโหลดคอมโพเนนต์
   useEffect(() => {
@@ -134,11 +295,10 @@ function ManageSerialPage() {
     getParts();
   };
 
-  // ฟังก์ชันจัดการการกดปุ่ม Enter
+  // ฟังก์ชันจัดการการกดปุ่ม Enter (เก่า - รักษาไว้เพื่อ backward compatibility)
   const handleKeyPress = (event) => {
     if (event.key === 'Enter') {
-      searchParts();
-      paginateParts(1);
+      handleSearch();
     }
   };
 
@@ -179,13 +339,13 @@ function ManageSerialPage() {
                   Parts
                 </h5>
                 <div className="d-flex gap-2 flex-wrap">
-                  <div className="position-relative">
+                  <div className="position-relative" ref={searchContainerRef}>
                     <FormControl
                       className="ps-4"
                       style={{ 
                         borderRadius: "6px",
                         boxShadow: "none",
-                        minWidth: "250px",
+                        minWidth: "1000px",
                         backgroundColor: "#333333",
                         color: "#e0e0e0",
                         border: "1px solid #444444"
@@ -193,7 +353,12 @@ function ManageSerialPage() {
                       type="text"
                       placeholder="ค้นหาชิ้นส่วน..."
                       ref={searchRef}
-                      onKeyPress={handleKeyPress}
+                      value={searchTerm}
+                      onChange={handleInputChange}
+                      onKeyDown={handleKeyDown}
+                      onFocus={() => {
+                        if (suggestions.length > 0) setShowSuggestions(true);
+                      }}
                     />
                     <Search className="position-absolute" style={{ 
                       left: "10px", 
@@ -201,25 +366,78 @@ function ManageSerialPage() {
                       transform: "translateY(-50%)",
                       color: "#999999"
                     }} />
+
+                    {/* Clear button */}
+                    {searchTerm && (
+                      <Button
+                        variant="link"
+                        className="position-absolute p-0"
+                        style={{
+                          right: "8px",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          color: "#999999",
+                          border: "none",
+                          background: "none"
+                        }}
+                        onClick={() => {
+                          setSearchTerm("");
+                          if (searchRef.current) {
+                            searchRef.current.value = "";
+                          }
+                          setShowSuggestions(false);
+                          paginateParts(1, parts);
+                        }}
+                      >
+                        <XCircle size={16} />
+                      </Button>
+                    )}
+
+                    {/* Suggestions Dropdown */}
+                    {showSuggestions && suggestions.length > 0 && (
+                      <ListGroup
+                        className="position-absolute shadow-lg"
+                        style={{
+                          top: "100%",
+                          left: "0",
+                          right: "-10%",
+                          minWidth: "350px",
+                          width: "100%",
+                          zIndex: 1000,
+                          maxHeight: "300px",
+                          overflowY: "auto",
+                          backgroundColor: "#2a2a2a",
+                          border: "1px solid #444444",
+                          borderRadius: "6px",
+                          marginTop: "2px"
+                        }}
+                      >
+                        {suggestions.map((suggestion, index) => (
+                          <ListGroup.Item
+                            key={index}
+                            action
+                            onClick={() => selectSuggestion(suggestion)}
+                            className={`d-flex align-items-center ${index === selectedSuggestionIndex ? 'active' : ''}`}
+                            style={{
+                              backgroundColor: index === selectedSuggestionIndex ? "#007bff" : "#2a2a2a",
+                              color: index === selectedSuggestionIndex ? "#fff" : "#e0e0e0",
+                              border: "none",
+                              borderBottom: index < suggestions.length - 1 ? "1px solid #444444" : "none",
+                              cursor: "pointer",
+                              padding: "8px 12px"
+                            }}
+                          >
+                            <span className="me-2">{suggestion.icon}</span>
+                            <div className="flex-grow-1">
+                              <div className="fw-medium">{suggestion.text}</div>
+                              <small className="text-muted">{suggestion.type}</small>
+                            </div>
+                          </ListGroup.Item>
+                        ))}
+                      </ListGroup>
+                    )}
                   </div>
-                  <Button
-                    variant="primary"
-                    style={{ 
-                      backgroundColor: "#00c853", 
-                      borderColor: "#00c853",
-                      borderRadius: "6px"
-                    }}
-                    onClick={async () => {
-                      if (searchRef.current.value.trim() === '') {
-                        await getParts();
-                      } else {
-                        await searchParts();
-                      }
-                      paginateParts(1);
-                    }}
-                  >
-                    <Search size={18} className="me-1" /> Search
-                  </Button>
+
                   <Button
                     variant="light"
                     style={{ 
@@ -228,10 +446,13 @@ function ManageSerialPage() {
                       backgroundColor: "#333333",
                       color: "#e0e0e0"
                     }}
-                    onClick={async () => {
-                      searchRef.current.value = '';
-                      await getParts();
-                      paginateParts(1);
+                    onClick={() => {
+                      setSearchTerm("");
+                      if (searchRef.current) {
+                        searchRef.current.value = "";
+                      }
+                      setShowSuggestions(false);
+                      paginateParts(1, parts);
                     }}
                   >
                     <XCircle size={18} className="me-1" /> Clear
@@ -267,7 +488,7 @@ function ManageSerialPage() {
                     </tr>
                   </thead>
 
-                  {parts.length === 0 ? (
+                  {currentPartPageData.length === 0 ? (
                     <tbody>
                       <tr>
                         <td colSpan={9} className="text-center py-5" style={{ color: "#bdbdbd" }}>
@@ -310,6 +531,41 @@ function ManageSerialPage() {
                           <td>{part.min}</td>
                           <td>{part.part_detail || "-"}</td>
                           <td>
+                            <EditModal 
+                              entityType="part" 
+                              data={part}
+                              onSave={handleSave}
+                              customTitle="แก้ไขข้อมูลชิ้นส่วน"
+                            >
+                              <Button
+                                variant="warning"
+                                size="sm"
+                                className="ms-1"
+                                style={{
+                                  borderRadius: "6px",
+                                  backgroundColor: "#fb8c00",
+                                  borderColor: "#fb8c00"
+                                }}
+                              >
+                                <Pencil size={16} />
+                              </Button>
+                            </EditModal>
+                            
+                            <Button
+                              variant="info"
+                              style={{ borderRadius: "6px", backgroundColor: "#0091ea", borderColor: "#0091ea" }}
+                              onClick={() => setShowUploadModal(true)}
+                            >
+                              🖼️
+                            </Button>
+                            <Modal show={showUploadModal} onHide={() => setShowUploadModal(false)} centered size="md">
+                              <Modal.Header closeButton>
+                                <Modal.Title>อัปโหลดรูปภาพ</Modal.Title>
+                              </Modal.Header>
+                              <Modal.Body>
+                                <Upimage />
+                              </Modal.Body>
+                            </Modal>
                             <Button
                               variant="danger"
                               size="sm"
@@ -322,25 +578,6 @@ function ManageSerialPage() {
                             >
                               <Trash size={16} />
                             </Button>
-                            <EditModal 
-  entityType="part" 
-  data={part}  // ข้อมูล part ที่ต้องการแก้ไข
-  onSave={handleSave}
-  customTitle="แก้ไขข้อมูลชิ้นส่วน"
->
-  <Button
-    variant="warning"
-    size="sm"
-    className="ms-1"
-    style={{
-      borderRadius: "6px",
-      backgroundColor: "#fb8c00",
-      borderColor: "#fb8c00"
-    }}
-  >
-    <Pencil size={16} />
-  </Button>
-</EditModal>
                           </td>
                         </tr>
                       ))}

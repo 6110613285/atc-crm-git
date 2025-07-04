@@ -32,7 +32,6 @@ function AddSerial({ onSave }) {
         setParts(partsData);
         setFilteredParts(partsData);
       }
-      
 
       // ดึงข้อมูล types
       const typesResponse = await fetch(`${import.meta.env.VITE_SERVER}/Store.php?action=getType`);

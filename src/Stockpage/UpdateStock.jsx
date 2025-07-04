@@ -193,20 +193,6 @@ function ProductEdit({ onSave }) {
     }
   };
 
-  //ตะกร้า
-  const fetchBucket = async () => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_SERVER}/Store.php?action=getBucket`);
-      const data = await response.json();
-      if (data) {
-        setParts(data);
-      }
-    } catch (error) {
-      console.error("Error fetching parts:", error);
-    }
-  };
-
-
   // แก้ไขฟังก์ชันดึงข้อมูลจาก tb_location แทน tb_stores
   const fetchLocations = async () => {
     try {
