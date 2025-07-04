@@ -4,6 +4,7 @@ header("Access-Control-Allow-Origin: *");
 error_reporting(0);
 error_reporting(E_ERROR | E_PARSE);
 header("content-type:text/javascript;charset=utf-8");
+header('Content-Type: application/json; charset=utf-8');
 $link = mysqli_connect('localhost', 'root', '', 'db_store');
 //$link = mysqli_connect('aliantechnology.com', 'cp615710_atc', 'Aliantechnology', "cp615710_atc_db");
 
@@ -87,7 +88,7 @@ if ($action == "get") {
     }
 
     mysqli_close($link);
-}else if ($action == "getSuppliers") {
+} else if ($action == "getSuppliers") {
     // ดึงชื่อซัพพลายเออร์ที่ไม่ซ้ำกันจากตาราง tb_part_no, tb_gensn, และ tb_stock
     $sql = "SELECT DISTINCT supplier as name FROM (
                 SELECT supplier FROM tb_part_no WHERE supplier IS NOT NULL AND supplier != ''
@@ -97,9 +98,9 @@ if ($action == "get") {
                 SELECT supplier FROM tb_stock WHERE supplier IS NOT NULL AND supplier != ''
             ) AS combined_suppliers
             ORDER BY name ASC";
-    
+
     $result = mysqli_query($link, $sql);
-    
+
     if (mysqli_num_rows($result) > 0) {
         $suppliers = [];
         while ($row = mysqli_fetch_assoc($result)) {
@@ -109,9 +110,9 @@ if ($action == "get") {
     } else {
         echo json_encode(null);
     }
-    
+
     mysqli_close($link);
-}else if ($action == "updateLocation") {
+} else if ($action == "updateLocation") {
     // รับค่าจาก POST request
     $location_id = $_POST['location_id'];
     $location_name = $_POST['location_name'];
@@ -142,9 +143,7 @@ if ($action == "get") {
     }
 
     mysqli_close($link);
-}
-
-else if ($action == "updateStore") {
+} else if ($action == "updateStore") {
     // รับค่าจาก POST request
     $store_id = $_POST['store_id'];
     $store_name = $_POST['store_name'];
@@ -175,7 +174,7 @@ else if ($action == "updateStore") {
     }
 
     mysqli_close($link);
-}else if ($action == "updateType") {
+} else if ($action == "updateType") {
     // รับค่าจาก POST request
     $type_id = $_POST['type_id'];
     $type_name = $_POST['type_name'];
@@ -190,10 +189,10 @@ else if ($action == "updateStore") {
             type_unit = '$type_unit'
             WHERE type_id = '$type_id'";
 
-    
+
     $result = mysqli_query($link, $sql);
 
-    
+
     if ($result) {
         echo json_encode([
             'status' => 'success',
@@ -217,8 +216,12 @@ else if ($action == "updatePart") {
     $min = $_POST['min'] ?? '0';
     $part_detail = $_POST['part_detail'] ?? '';
 
-    // สร้างคำสั่ง SQL
-    $sql = "UPDATE `tb_part_no` SET 
+    // ตัวแปรสำหรับการตอบกลับ
+    $success_count = 0;
+    $error_messages = [];
+
+    // 1. อัปเดตตาราง tb_part_no (หลัก)
+    $sql01 = "UPDATE `tb_part_no` SET 
             part_name = '$part_name', 
             part_type = '$part_type',
             supplier = '$supplier',
@@ -227,19 +230,71 @@ else if ($action == "updatePart") {
             part_detail = '$part_detail'
             WHERE part_num = '$part_num'";
 
-    // ทำการ query
-    $result = mysqli_query($link, $sql);
+    $result01 = mysqli_query($link, $sql01);
+    if ($result01) {
+        $success_count++;
+    } else {
+        $error_messages[] = "ไม่สามารถอัปเดต tb_part_no: " . mysqli_error($link);
+    }
+
+    // 2. เช็คและอัปเดตตาราง tb_gensn (ถ้ามีข้อมูล)
+    $check_gensn = "SELECT COUNT(*) as count FROM `tb_gensn` WHERE part_num = '$part_num'";
+    $check_result = mysqli_query($link, $check_gensn);
+    $gensn_exists = mysqli_fetch_assoc($check_result)['count'] > 0;
+
+    if ($gensn_exists) {
+        $sql02 = "UPDATE `tb_gensn` SET 
+                part_name = '$part_name',
+                supplier = '$supplier', 
+                brand = '$brand'
+                WHERE part_num = '$part_num'";
+        
+        $result02 = mysqli_query($link, $sql02);
+        if ($result02) {
+            $success_count++;
+        } else {
+            $error_messages[] = "ไม่สามารถอัปเดต tb_gensn: " . mysqli_error($link);
+        }
+    }
+
+    // 3. เช็คและอัปเดตตาราง tb_stock (ถ้ามีข้อมูล)
+    $check_stock = "SELECT COUNT(*) as count FROM `tb_stock` WHERE part_num = '$part_num'";
+    $check_result = mysqli_query($link, $check_stock);
+    $stock_exists = mysqli_fetch_assoc($check_result)['count'] > 0;
+
+    if ($stock_exists) {
+        $sql03 = "UPDATE `tb_stock` SET 
+                part_name = '$part_name',
+                supplier = '$supplier'
+                WHERE part_num = '$part_num'";
+        
+        $result03 = mysqli_query($link, $sql03);
+        if ($result03) {
+            $success_count++;
+        } else {
+            $error_messages[] = "ไม่สามารถอัปเดต tb_stock: " . mysqli_error($link);
+        }
+    }
 
     // ส่งผลลัพธ์
-    if ($result) {
+    if ($success_count > 0 && empty($error_messages)) {
         echo json_encode([
             'status' => 'success',
-            'message' => 'อัปเดตข้อมูลชิ้นส่วนสำเร็จ'
+            'message' => 'อัปเดตข้อมูลชิ้นส่วนสำเร็จ',
+            'updated_tables' => $success_count
+        ]);
+    } else if ($success_count > 0 && !empty($error_messages)) {
+        echo json_encode([
+            'status' => 'partial_success',
+            'message' => 'อัปเดตบางส่วนสำเร็จ',
+            'updated_tables' => $success_count,
+            'errors' => $error_messages
         ]);
     } else {
         echo json_encode([
             'status' => 'error',
-            'message' => mysqli_error($link)
+            'message' => 'ไม่สามารถอัปเดตข้อมูลได้',
+            'errors' => $error_messages
         ]);
     }
 
@@ -256,12 +311,12 @@ else if ($action == "updateSerial") {
     $sup_serial = $_POST['sup_serial'] ?? '';
     $sup_part_number = $_POST['sup_part_number'] ?? '';
     $packsize = $_POST['packsize'] ?? '1';
-    
+
     // ดึงข้อมูล part_name จาก tb_part_no เพื่อใช้อัปเดต
     $get_name_sql = "SELECT part_name FROM tb_part_no WHERE part_num = '$part_num'";
     $name_result = mysqli_query($link, $get_name_sql);
     $part_name = "";
-    
+
     if ($name_result && mysqli_num_rows($name_result) > 0) {
         $name_row = mysqli_fetch_assoc($name_result);
         $part_name = $name_row['part_name'];
@@ -295,7 +350,7 @@ else if ($action == "updateSerial") {
     }
 
     mysqli_close($link);
-}else if ($action == "getwhereuserid") {
+} else if ($action == "getwhereuserid") {
 
     $id = $_GET['id'];
 
@@ -318,30 +373,6 @@ else if ($action == "updateSerial") {
     }
 
     echo json_encode($output);
-    mysqli_close($link);
-} else if ($action == "insertStock") {
-    $date = $_GET['date'];
-    $uname = $_GET['uname'];        // User column
-    $serial = $_GET['serial'];      // serial_num column
-    $partnum = $_GET['partnum'];    // part_num column
-    $partname = $_GET['partname'];  // part_name column
-    $parttype = $_GET['parttype'];  // part_type column
-    $partlo = $_GET['partlo'];      // part_location column
-    $qty = $_GET['qty'];            // qty column
-    $storeid = $_GET['storeid'];    // store_id column
-    $storename = $_GET['storename']; // store_name column
-    $note = $_GET['note'];          // note column
-    $status = $_GET['status'];      // status column
-
-
-    $sql = "INSERT INTO `tb_log_edit`(`date`, `User`, `serial_num`, `part_num`, `part_name`, `part_type`, `part_location`,`qty`,`store_id`,`store_name`,`note`,`status`) 
-            VALUES ('$date','$uname','$serial','$partnum','$partname','$parttype','$partlo','$qty','$storeid','$storename','$note','$status')";
-
-    $result = mysqli_query($link, $sql);
-
-    if ($result) {
-        echo json_encode("ok");
-    }
     mysqli_close($link);
 } else if ($action == "addType") {
     // Get parameters from request
@@ -532,10 +563,7 @@ else if ($action == "deleteSerial") {
     }
 
     mysqli_close($link);
-}
-
-// ฟังก์ชันสำหรับดึงค่า Serial Number ล่าสุดของวันนั้น
-else if ($action == "getLastSerialCount") {
+} else if ($action == "getLastSerialCount") {
     $date = $_GET['date']; // รูปแบบ YYYYMMDD
 
     // ตรวจสอบรูปแบบวันที่
@@ -546,13 +574,13 @@ else if ($action == "getLastSerialCount") {
     }
 
     // กำหนดรูปแบบการค้นหาด้วย wildcard ที่เฉพาะเจาะจงมากขึ้น
-    // สมมติว่ารูปแบบเลขซีเรียลคือ PREFIX + DATE + SEQUENCE
     $pattern = '%' . $date . '%';
 
     // ดึงข้อมูลจากทั้งสองตาราง
 
-    // 1. ดึงจาก tb_stock
-    $sql_stock = "SELECT serial_num FROM tb_stock WHERE serial_num LIKE ? ORDER BY serial_num DESC LIMIT 1";
+    // 1. ดึงจาก tb_stock - แก้ไขให้เรียงโดยไม่สนใจ 2 ตัวอักษรแรก
+    $sql_stock = "SELECT serial_num FROM tb_stock WHERE serial_num LIKE ? 
+                 ORDER BY SUBSTRING(serial_num, 3) DESC LIMIT 1";
     $stmt_stock = mysqli_prepare($link, $sql_stock);
 
     if (!$stmt_stock) {
@@ -575,7 +603,8 @@ else if ($action == "getLastSerialCount") {
     mysqli_stmt_close($stmt_stock);
 
     // 2. ดึงจาก tb_gensn
-    $sql_gensn = "SELECT part_no FROM tb_gensn WHERE part_no LIKE ? ORDER BY part_no DESC LIMIT 1";
+    $sql_gensn = "SELECT part_no FROM tb_gensn WHERE part_no LIKE ? 
+                 ORDER BY SUBSTRING(part_no, 3) DESC LIMIT 1";
     $stmt_gensn = mysqli_prepare($link, $sql_gensn);
 
     if (!$stmt_gensn) {
@@ -605,6 +634,84 @@ else if ($action == "getLastSerialCount") {
 
     echo json_encode(array("last_count" => $max_count));
 
+    mysqli_close($link);
+}else if ($action == "getSerialInfo") {
+    $serial_num = $_GET['serial_num'];
+
+    // ตรวจสอบว่ามีการส่งค่า serial_num มาหรือไม่
+    if (!isset($serial_num) || empty($serial_num)) {
+        echo json_encode(array("status" => "error", "message" => "ไม่ได้ระบุ Serial Number"));
+        mysqli_close($link);
+        return;
+    }
+
+    // ค้นหาข้อมูล Serial จากตาราง tb_stock
+    $sql = "SELECT 
+                part_num, 
+                part_name, 
+                supplier, 
+                location, 
+                store_name, 
+                qty, 
+                sup_serial, 
+                sup_barcode,
+                serial_num,
+                datetime
+            FROM tb_stock 
+            WHERE serial_num = ? AND qty > 0
+            ORDER BY datetime DESC";
+
+    $stmt = mysqli_prepare($link, $sql);
+
+    if (!$stmt) {
+        echo json_encode(array("status" => "error", "message" => "Database error: " . mysqli_error($link)));
+        mysqli_close($link);
+        return;
+    }
+
+    mysqli_stmt_bind_param($stmt, "s", $serial_num);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+
+    $data = array();
+    while ($row = mysqli_fetch_assoc($result)) {
+        $data[] = $row;
+    }
+
+    if (empty($data)) {
+        // ถ้าไม่พบใน tb_stock ให้ลองหาใน tb_gensn (Serial ที่ยังไม่ได้นำเข้าคลัง)
+        $sql_gensn = "SELECT 
+                        part_num, 
+                        part_name, 
+                        supplier, 
+                        '' as location,
+                        '' as store_name,
+                        packsize as qty, 
+                        sup_serial, 
+                        sup_part_number as sup_barcode,
+                        part_no as serial_num,
+                        date as datetime
+                    FROM tb_gensn 
+                    WHERE part_no = ?
+                    ORDER BY date DESC";
+
+        $stmt_gensn = mysqli_prepare($link, $sql_gensn);
+
+        if ($stmt_gensn) {
+            mysqli_stmt_bind_param($stmt_gensn, "s", $serial_num);
+            mysqli_stmt_execute($stmt_gensn);
+            $result_gensn = mysqli_stmt_get_result($stmt_gensn);
+
+            while ($row = mysqli_fetch_assoc($result_gensn)) {
+                $row['status'] = 'not_in_stock'; // แมร์คว่ายังไม่ได้เข้าคลัง
+                $data[] = $row;
+            }
+            mysqli_stmt_close($stmt_gensn);
+        }
+    }
+
+    echo json_encode($data);
+    mysqli_stmt_close($stmt);
     mysqli_close($link);
 } else if ($action == "searchParts") {
     // รับค่า search จาก parameter
@@ -1083,26 +1190,6 @@ else if ($action == "getLastSerialCount") {
     echo json_encode($data);
     mysqli_close($link);
     return;
-
-}else if ($action == "getBucket") {
-    // ตะกร้า
-    $sql = "SELECT * FROM tb_part_no ORDER BY part_num ASC";
-    $result = mysqli_query($link, $sql);
-
-    if (!$result) {
-        echo json_encode(null);
-        mysqli_close($link);
-        return;
-    }
-
-    $data = array();
-    while ($row = mysqli_fetch_assoc($result)) {
-        $data[] = $row;
-    }
-
-    echo json_encode($data);
-    mysqli_close($link);
-    return;
 } else if ($action == "deleteType") {
     $type_id = $_GET['type_id'];
 
@@ -1316,7 +1403,27 @@ else if ($action == "getLastSerialCount") {
 
     echo json_encode($data);
     mysqli_close($link);
-} else if ($action == "getStockParts") {
+} else if ($action == "getStock") {
+    // ดึงข้อมูล parts ทั้งหมด
+    $sql = "SELECT * FROM tb_stock ORDER BY datetime ASC";
+    $result = mysqli_query($link, $sql);
+
+    if (!$result) {
+        echo json_encode(null);
+        mysqli_close($link);
+        return;
+    }
+
+    $data = array();
+    while ($row = mysqli_fetch_assoc($result)) {
+        $data[] = $row;
+    }
+
+    echo json_encode($data);
+    mysqli_close($link);
+    return;
+
+}else if ($action == "getStockParts") {
     // วิธีที่ 1: รวมทุก column ที่ต้องการเลือกไว้ใน GROUP BY
     $sql = "SELECT tb_stock.part_num, tb_stock.part_name, tb_stock.supplier, 
             tb_stock.location, tb_stock.store_name, tb_stock.note, 
@@ -1355,7 +1462,154 @@ else if ($action == "getLastSerialCount") {
 
     echo json_encode($data);
     mysqli_close($link);
-} else if ($action == "getSerialsForLocation") {
+} else if ($action == "getOutItems") {
+    // ดึงรายการที่ OUT แล้วยังไม่ได้คืน
+    $sql = "SELECT DISTINCT 
+                l1.part_num,
+                l1.part_name, 
+                l1.supplier,
+                l1.location,
+                l1.store_name,
+                l1.serial_num,
+                l1.User as user,
+                l1.part_qty as qty,
+                l1.date as datetime,
+                l1.note
+            FROM tb_log_product l1
+            WHERE l1.status = 'OUT'
+            AND NOT EXISTS (
+                SELECT 1 FROM tb_log_product l2 
+                WHERE l2.serial_num = l1.serial_num 
+                AND l2.part_num = l1.part_num
+                AND l2.status = 'Return'
+                AND l2.date > l1.date
+            )
+            ORDER BY l1.date DESC";
+
+    $result = mysqli_query($link, $sql);
+    $data = array();
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $data[] = $row;
+    }
+
+    echo json_encode($data);
+    mysqli_close($link);
+} else if ($action == "getBucket") {
+    //ตะกร้า
+    $sql = "SELECT * FROM tb_bucket ORDER BY UID ASC";
+    $result = mysqli_query($link, $sql);
+
+    if (!$result) {
+        echo json_encode(null);
+        mysqli_close($link);
+        return;
+    }
+
+    $data = array();
+    while ($row = mysqli_fetch_assoc($result)) {
+        $data[] = $row;
+    }
+
+    echo json_encode($data);
+    mysqli_close($link);
+    return;
+
+}else if ($action == 'addBucket') {
+    // สร้าง BucketID อัตโนมัติ
+    $sql = "SELECT MAX(CAST(SUBSTRING(BucketID, 1) AS UNSIGNED)) as max_id FROM tb_bucket";
+    $result = mysqli_query($conn, $sql);
+    $row = mysqli_fetch_assoc($result);
+    $nextId = str_pad(($row['max_id'] + 1), 2, '0', STR_PAD_LEFT);
+    
+    
+}else if ($action == "deleteBucket") {
+    // รับค่า part_num จาก URL parameter
+    $uid = $_GET['uid'];
+
+    // ตรวจสอบว่ามีการส่งค่า part_num มาหรือไม่
+    if (!isset($uid) || empty($uid)) {
+        echo json_encode(array("status" => "error", "message" => "Missing uid parameter"));
+        mysqli_close($link);
+        return;
+    }
+
+    // SQL query สำหรับลบข้อมูลชิ้นส่วน
+    $sql = "DELETE FROM tb_bucket WHERE uid = '$uid'";
+    $result = mysqli_query($link, $sql);
+
+    if ($result) {
+        // ถ้าลบสำเร็จ
+        if (mysqli_affected_rows($link) > 0) {
+            echo json_encode(array("status" => "success", "message" => "Part deleted successfully"));
+        } else {
+            // ถ้าไม่มีแถวไหนถูกลบ (อาจจะไม่พบรหัสชิ้นส่วนที่ระบุ)
+            echo json_encode(array("status" => "error", "message" => "Part not found"));
+        }
+    } else {
+        // ถ้าเกิดข้อผิดพลาดในการลบ
+        echo json_encode(array("status" => "error", "message" => "Failed to delete part: " . mysqli_error($link)));
+    }
+
+    mysqli_close($link);
+
+}else if ($action === 'saveBucket') {
+    // Get parameters
+    
+    $PO = $_GET['PO'] ?? '';
+    $QO = $_GET['QO'] ?? '';
+    $CUSTOMER = $_GET['CUSTOMER'] ?? '';
+    $BucketID = $_GET['BucketID'] ?? '';
+    $USERID = $_GET['USERID'] ?? '';
+    $USERNAME = $_GET['USERNAME'] ?? '';
+    $Partname = $_GET['Partname'] ?? '';
+    $QTY = $_GET['QTY'] ?? '';
+    $status = $_GET['status'] ?? '';
+    $datetime = $_GET['datetime'] ?? '';
+    $Note = $_GET['Note'] ?? '';
+    
+    // Validate and truncate data to prevent "Data too long" errors
+    // Adjust these lengths based on your actual column definitions
+    
+    $PO = substr($PO, 0, 100);
+    $QO = substr($QO, 0, 100); // Adjust this length as needed
+    $CUSTOMER = substr($CUSTOMER, 0, 255);
+    $BucketID = substr($BucketID, 0, 50);
+    $USERID = substr($USERID, 0, 50);
+    $USERNAME = substr($USERNAME, 0, 100);
+    $Partname = substr($Partname, 0, 255);
+    $QTY = substr($QTY, 0, 20);
+    $status = substr($status, 0, 50);
+    $datetime = substr($datetime, 0, 50);
+    $Note = substr($Note, 0, 1000);
+    
+    // Use prepared statements to prevent SQL injection
+    $sql = "INSERT INTO tb_bucket 
+            ( PO, QO, CUSTOMER, BucketID, USERID, USERNAME, Partname, QTY, status, datetime, Note)
+            VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            
+    $stmt = mysqli_prepare($link, $sql);
+    
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, "sssssssssss", 
+            $PO, $QO, $CUSTOMER, $BucketID, $USERID, 
+            $USERNAME, $Partname, $QTY, $status, $datetime, $Note);
+        
+        $result = mysqli_stmt_execute($stmt);
+        
+        if ($result) {
+            echo json_encode(["status" => "success", "message" => "Data saved successfully"]);
+        } else {
+            echo json_encode(["status" => "error", "message" => "Failed to save data: " . mysqli_error($link)]);
+        }
+        
+        mysqli_stmt_close($stmt);
+    } else {
+        echo json_encode(["status" => "error", "message" => "Failed to prepare statement: " . mysqli_error($link)]);
+    }
+    
+    mysqli_close($link);
+}else if ($action == "getSerialsForLocation") {
     $location = $_GET['location'];
 
     $sql = "SELECT part_num, part_name, supplier, serial_num, qty 
@@ -1587,19 +1841,22 @@ else if ($action == "getLastSerialCount") {
                 break;
 
             case 'RETURN':
+                // ดึง return_type เพื่อดูว่าเป็นการคืนประเภทไหน
+                $return_type = $_GET['return_type'] ?? 'BORROW';
+
                 // อัพเดตสต๊อกสำหรับการคืน
                 $updateStockSql = "UPDATE tb_stock SET 
-                    datetime = ?,
-                    part_name = ?,
-                    supplier = ?,
-                    qty = qty + ?,
-                    store_name = ?,
-                    note = ?
-                    WHERE part_num = ? AND location = ? 
-                    AND serial_num = ?";
-                $stmt = mysqli_prepare($link, $updateStockSql);
+    datetime = ?,
+    part_name = ?,
+    supplier = ?,
+    qty = qty + ?,
+    store_name = ?,
+    note = ?
+    WHERE part_num = ? AND location = ? 
+    AND serial_num = ?";
+                $updateStmt = mysqli_prepare($link, $updateStockSql); // เปลี่ยนเป็น $updateStmt
                 mysqli_stmt_bind_param(
-                    $stmt,
+                    $updateStmt,
                     "ssssissss",
                     $date,
                     $partname,
@@ -1611,18 +1868,18 @@ else if ($action == "getLastSerialCount") {
                     $location,
                     $serial_num
                 );
-                mysqli_stmt_execute($stmt);
+                mysqli_stmt_execute($updateStmt);
 
                 if (mysqli_affected_rows($link) == 0) {
                     // ถ้าไม่มีสต๊อก ให้สร้างรายการใหม่
                     $insertSql = "INSERT INTO tb_stock (
-                        datetime, part_num, part_name, supplier,
-                        qty, location, store_name, note, serial_num, sup_serial, sup_barcode
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                    $stmt = mysqli_prepare($link, $insertSql);
+        datetime, part_num, part_name, supplier,
+        qty, location, store_name, note, serial_num, sup_serial, sup_barcode
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    $insertStmt = mysqli_prepare($link, $insertSql); // เปลี่ยนเป็น $insertStmt
                     mysqli_stmt_bind_param(
-                        $stmt,
-                        "sssssssssss",
+                        $insertStmt,
+                        "ssssissssss",
                         $date,
                         $partnum,
                         $partname,
@@ -1633,48 +1890,48 @@ else if ($action == "getLastSerialCount") {
                         $note,
                         $serial_num,
                         $sup_serial,
-                        $sup_bar,
-                        
+                        $sup_bar
                     );
-                    mysqli_stmt_execute($stmt);
+                    mysqli_stmt_execute($insertStmt);
                 }
 
-                // อัพเดตตาราง tb_borrow
-                $updateBorrowSql = "UPDATE tb_borrow SET 
-                    qty = qty - ?
-                    WHERE part_num = ?
-                    AND serial_num = ? AND qty >= ? AND user = ?" ;
-                $stmt = mysqli_prepare($link, $updateBorrowSql);
-                mysqli_stmt_bind_param(
-                    $stmt,
-                    "issis",
-                    $qty,
-                    $partnum,
-                    $serial_num,
-                    $qty,
-                    $uname
-                );
-                mysqli_stmt_execute($stmt);
+                // จัดการ tb_borrow เฉพาะกรณี BORROW เท่านั้น
+                if ($return_type === 'BORROW') {
+                    // อัพเดตตาราง tb_borrow
+                    $updateBorrowSql = "UPDATE tb_borrow SET 
+        qty = qty - ?
+        WHERE part_num = ?
+        AND serial_num = ? AND qty >= ? AND user = ?";
+                    $borrowStmt = mysqli_prepare($link, $updateBorrowSql); // เปลี่ยนเป็น $borrowStmt
+                    mysqli_stmt_bind_param(
+                        $borrowStmt,
+                        "issis",
+                        $qty,
+                        $partnum,
+                        $serial_num,
+                        $qty,
+                        $uname
+                    );
+                    mysqli_stmt_execute($borrowStmt);
 
-                if (mysqli_affected_rows($link) == 0) {
-                    throw new Exception("Invalid return quantity or item not borrowed");
+                    if (mysqli_affected_rows($link) == 0) {
+                        throw new Exception("Invalid return quantity or item not borrowed");
+                    }
+
+                    // ลบรายการที่มีจำนวนเป็น 0
+                    $deleteBorrowSql = "DELETE FROM tb_borrow 
+                WHERE part_num = ?  
+                AND serial_num = ? AND qty <= 0 AND user = ?";
+                    $deleteStmt = mysqli_prepare($link, $deleteBorrowSql); // เปลี่ยนเป็น $deleteStmt
+                    mysqli_stmt_bind_param($deleteStmt, "sss", $partnum, $serial_num, $uname);
+                    mysqli_stmt_execute($deleteStmt);
                 }
+                // หมายเหตุ: กรณี OUT ไม่ต้องจัดการ tb_borrow
 
-                // ลบรายการที่มีจำนวนเป็น 0
-                $deleteBorrowSql = "DELETE FROM tb_borrow 
-                                    WHERE part_num = ?  
-                                    AND serial_num = ? AND qty <= 0 AND user = ?";
-                $stmt = mysqli_prepare($link, $deleteBorrowSql);
-                mysqli_stmt_bind_param($stmt, "sss", $partnum, $serial_num, $uname);
-                mysqli_stmt_execute($stmt);
                 break;
 
             default:
                 throw new Exception("Invalid status");
-        }
-
-        if ($status != 'IN') {
-            mysqli_stmt_execute($stmt);
         }
         mysqli_commit($link);
         echo json_encode("ok");
@@ -1685,7 +1942,1140 @@ else if ($action == "getLastSerialCount") {
     }
 
     mysqli_close($link);
-} else {
+} else if ($action == "addQuantity") {
+    // รับค่าพารามิเตอร์จาก GET request
+    $date = $_GET['date'];
+    $partnum = $_GET['partnum'];
+    $partname = $_GET['partname'];
+    $supplier = $_GET['supplier'];
+    $addQty = $_GET['qty']; // จำนวนที่จะเพิ่ม
+    $location = $_GET['location'];
+    $storename = $_GET['storename'];
+    $note = $_GET['note'];
+    $serial_num = $_GET['serial_num'];
+    $sup_serial = $_GET['sup_serial'] ?? '';
+    $sup_barcode = $_GET['sup_barcode'] ?? '';
+    $uname = $_GET['uname'];
+
+    // เริ่มการทำธุรกรรม
+    mysqli_begin_transaction($link);
+
+    try {
+        // ตรวจสอบว่ามี serial นี้อยู่ใน tb_stock หรือไม่
+        $checkSql = "SELECT qty FROM tb_stock 
+                     WHERE part_num = ? AND location = ? AND serial_num = ?";
+        $checkStmt = mysqli_prepare($link, $checkSql);
+        mysqli_stmt_bind_param($checkStmt, "sss", $partnum, $location, $serial_num);
+        mysqli_stmt_execute($checkStmt);
+
+        mysqli_stmt_store_result($checkStmt);
+
+        if (mysqli_stmt_num_rows($checkStmt) > 0) {
+            // มีข้อมูลอยู่แล้ว -> อัพเดต qty เพิ่มเข้าไป
+            mysqli_stmt_bind_result($checkStmt, $currentQty);
+            mysqli_stmt_fetch($checkStmt);
+
+            $newQty = $currentQty + $addQty;
+
+            $updateSql = "UPDATE tb_stock SET 
+                         datetime = ?,
+                         part_name = ?,
+                         supplier = ?,
+                         qty = ?,
+                         store_name = ?,
+                         note = ?
+                         WHERE part_num = ? AND location = ? AND serial_num = ?";
+
+            $updateStmt = mysqli_prepare($link, $updateSql);
+            mysqli_stmt_bind_param(
+                $updateStmt,
+                "sssisssss",
+                $date,
+                $partname,
+                $supplier,
+                $newQty,
+                $storename,
+                $note,
+                $partnum,
+                $location,
+                $serial_num
+            );
+
+            $updateResult = mysqli_stmt_execute($updateStmt);
+
+            if (!$updateResult) {
+                throw new Exception("Error updating stock quantity: " . mysqli_error($link));
+            }
+
+        } else {
+            // ไม่มีข้อมูล -> เพิ่มรายการใหม่
+            $insertSql = "INSERT INTO tb_stock (
+                         datetime, part_num, part_name, supplier,
+                         qty, location, store_name, note, serial_num, sup_serial, sup_barcode
+                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+            $insertStmt = mysqli_prepare($link, $insertSql);
+            mysqli_stmt_bind_param(
+                $insertStmt,
+                "ssssissssss",
+                $date,
+                $partnum,
+                $partname,
+                $supplier,
+                $addQty,
+                $location,
+                $storename,
+                $note,
+                $serial_num,
+                $sup_serial,
+                $sup_barcode
+            );
+
+            $insertResult = mysqli_stmt_execute($insertStmt);
+
+            if (!$insertResult) {
+                throw new Exception("Error inserting new stock record: " . mysqli_error($link));
+            }
+        }
+
+        // Commit การทำงาน
+        mysqli_commit($link);
+        echo json_encode("ok");
+
+    } catch (Exception $e) {
+        // Rollback หากเกิดข้อผิดพลาด
+        mysqli_rollback($link);
+        echo json_encode("error: " . $e->getMessage());
+    }
+
+    mysqli_close($link);
+} else if ($action == "getProducts") {
+    $sql = "SELECT * FROM tb_product ORDER BY Datein DESC";
+    $result = mysqli_query($link, $sql);
+
+    if (!$result) {
+        echo json_encode(null);
+        mysqli_close($link);
+        return;
+    }
+
+    $data = array();
+    while ($row = mysqli_fetch_assoc($result)) {
+        $data[] = $row;
+    }
+
+    echo json_encode($data);
+    mysqli_close($link);
+}
+
+// ฟังก์ชันค้นหาสินค้า
+else if ($action == "searchProducts") {
+    $search = isset($_GET['search']) ? $_GET['search'] : '';
+
+    // สร้างเงื่อนไขการค้นหา
+    $searchCondition = "";
+    if (!empty($search)) {
+        $searchCondition = " WHERE AT_Model LIKE '%$search%' 
+                           OR AT_SN LIKE '%$search%' 
+                           OR Sup_name LIKE '%$search%' 
+                           OR Supplier_Model LIKE '%$search%'
+                           OR Supplier_SN LIKE '%$search%'
+                           OR CPU LIKE '%$search%'
+                           OR Ram LIKE '%$search%'
+                           OR Customer LIKE '%$search%'
+                           OR Note LIKE '%$search%'
+                           OR location LIKE '%$search%'";
+    }
+
+    $sql = "SELECT * FROM tb_product" . $searchCondition . " ORDER BY Datein DESC";
+    $result = mysqli_query($link, $sql);
+
+    if (!$result) {
+        echo json_encode(null);
+        mysqli_close($link);
+        return;
+    }
+
+    $data = array();
+    while ($row = mysqli_fetch_assoc($result)) {
+        $data[] = $row;
+    }
+
+    if (empty($data)) {
+        echo json_encode(null);
+    } else {
+        echo json_encode($data);
+    }
+
+    mysqli_close($link);
+}
+
+// ฟังก์ชันเพิ่มสินค้าใหม่
+else if ($action == "addProduct") {
+    // รับข้อมูลจาก GET parameters
+    $datein = $_GET['datein'] ?? '';
+    $supplier_model = $_GET['supplier_model'] ?? '';
+    $sup_name = $_GET['sup_name'] ?? '';
+    $supplier_sn = $_GET['supplier_sn'] ?? '';
+    $at_model = $_GET['at_model'] ?? '';
+    $at_sn = $_GET['at_sn'] ?? '';
+    $displaysize = $_GET['displaysize'] ?? 0;
+    $touchtype = $_GET['touchtype'] ?? '';
+    $cap = $_GET['cap'] ?? 0;
+    $resis = $_GET['resis'] ?? 0;
+    $hdmi = $_GET['hdmi'] ?? 0;
+    $vga = $_GET['vga'] ?? 0;
+    $dvi = $_GET['dvi'] ?? 0;
+    $displayport = $_GET['displayport'] ?? 0;
+    $usb20 = $_GET['usb20'] ?? 0;
+    $usb30 = $_GET['usb30'] ?? 0;
+    $wifi = $_GET['wifi'] ?? 0;
+    $wifibrand = $_GET['wifibrand'] ?? '';
+    $wifimodel = $_GET['wifimodel'] ?? '';
+    $lan = $_GET['lan'] ?? 0;
+    $lanbrand = $_GET['lanbrand'] ?? '';
+    $lanmodel = $_GET['lanmodel'] ?? '';
+    $speaker = $_GET['speaker'] ?? 0;
+    $headphone = $_GET['headphone'] ?? 0;
+    $rs232 = $_GET['rs232'] ?? 0;
+    $rs485 = $_GET['rs485'] ?? 0;
+    $os_type = $_GET['os_type'] ?? '';
+    $windows_license = $_GET['windows_license'] ?? '';
+    $cpu = $_GET['cpu'] ?? '';
+    $ssd_hdd = $_GET['ssd_hdd'] ?? '';
+    $ssd_sn = $_GET['ssd_sn'] ?? '';
+    $ram = $_GET['ram'] ?? '';
+    $product_status = $_GET['product_status'] ?? '';
+    $note = $_GET['note'] ?? '';
+    $dateout = !empty($_GET['dateout']) ? $_GET['dateout'] : null;
+    $customer = $_GET['customer'] ?? '';
+    $quatation_no = $_GET['quatation_no'] ?? '';
+    $po_number = $_GET['po_number'] ?? '';
+    $location = $_GET['location'] ?? '';
+
+    // ตรวจสอบค่าที่จำเป็น
+    if (empty($datein) || empty($at_model) || empty($at_sn) || empty($sup_name)) {
+        echo json_encode("error: Missing required fields");
+        mysqli_close($link);
+        return;
+    }
+
+    // เริ่มการทำธุรกรรม
+    mysqli_begin_transaction($link);
+
+    try {
+        // 1. เพิ่มข้อมูลสินค้าลงใน tb_product (ใช้คอลัมน์ที่มีจริงในตาราง)
+        $sql = "INSERT INTO `tb_product` (
+            `Datein`, `Supplier_Model`, `Sup_name`, `Supplier_SN`, `AT_Model`, `AT_SN`,
+            `displaysize`, `touchtype`, `cap`, `resis`, `HDMI`, `VGA`, `DVI`, `DisplayPort`,
+            `USB2.0`, `USB3.0`, `WIFI`, `WIFIBRAND`, `WIFIMODEL`, `LAN`, `LANBRAND`, `LANMODEL`,
+            `Speaker`, `Headphone`, `RS232`, `RS485`, `OS_TYPE`, `Windows_license`, `CPU`,
+            `SSD/HDD`, `SSD_SN`, `Ram`, `Product_status`, `Note`, `Dateout`, `Customer`,
+            `Quatation_No`, `PO_number` , `location`
+        ) VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ,?
+        )";
+
+        $stmt = mysqli_prepare($link, $sql);
+
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . mysqli_error($link));
+        }
+
+        mysqli_stmt_bind_param(
+            $stmt,
+            "ssssssisiisssssssssssssssssssssssssssss",
+            $datein,
+            $supplier_model,
+            $sup_name,
+            $supplier_sn,
+            $at_model,
+            $at_sn,
+            $displaysize,
+            $touchtype,
+            $cap,
+            $resis,
+            $hdmi,
+            $vga,
+            $dvi,
+            $displayport,
+            $usb20,
+            $usb30,
+            $wifi,
+            $wifibrand,
+            $wifimodel,
+            $lan,
+            $lanbrand,
+            $lanmodel,
+            $speaker,
+            $headphone,
+            $rs232,
+            $rs485,
+            $os_type,
+            $windows_license,
+            $cpu,
+            $ssd_hdd,
+            $ssd_sn,
+            $ram,
+            $product_status,
+            $note,
+            $dateout,
+            $customer,
+            $quatation_no,
+            $po_number,
+            $location
+        );
+
+        $result1 = mysqli_stmt_execute($stmt);
+
+        if (!$result1) {
+            throw new Exception("Error inserting product: " . mysqli_stmt_error($stmt));
+        }
+
+        // 2. เพิ่มข้อมูลลงใน tb_log_product
+        $log_sql = "INSERT INTO `tb_log_pc` (`ATC_modal`, `SN`, `status`, `date`, `user`) 
+                    VALUES (?, ?, ?, ?, ?)";
+
+        $log_stmt = mysqli_prepare($link, $log_sql);
+        $status_log = "IN";
+        $user = "System"; // หรือใช้จากผู้ใช้ที่ล็อกอิน
+        
+        mysqli_stmt_bind_param(
+            $log_stmt,
+            "sssss",
+            $productData['AT_Model'],
+            $productData['AT_SN'],
+            $status_log,
+            $dateout,
+            $user
+        );
+
+        $log_result = mysqli_stmt_execute($log_stmt);
+
+        if (!$log_result) {
+            throw new Exception("Error inserting log: " . mysqli_stmt_error($log_stmt));
+        }
+
+
+        // Commit transaction
+        mysqli_commit($link);
+        echo json_encode("ok");
+
+    } catch (Exception $e) {
+        // Rollback transaction
+        mysqli_rollback($link);
+        echo json_encode("error: " . $e->getMessage());
+    }
+
+    mysqli_close($link);
+}
+
+
+// ฟังก์ชันลบสินค้า
+else if ($action == "deleteProduct") {
+    $product_id = $_GET['product_id'];
+
+    // ตรวจสอบว่ามีการส่งค่า product_id มาหรือไม่
+    if (!isset($product_id) || empty($product_id)) {
+        echo json_encode(array("status" => "error", "message" => "ไม่ได้ระบุรหัสสินค้า"));
+        mysqli_close($link);
+        return;
+    }
+
+    // ตรวจสอบว่ามีข้อมูลอยู่หรือไม่
+    $checkSql = "SELECT * FROM tb_product WHERE id = '$product_id'";
+    $checkResult = mysqli_query($link, $checkSql);
+
+    if (mysqli_num_rows($checkResult) == 0) {
+        echo json_encode(array("status" => "error", "message" => "ไม่พบข้อมูลสินค้าที่ต้องการลบ"));
+        mysqli_close($link);
+        return;
+    }
+
+    // เริ่มการทำธุรกรรม
+    mysqli_begin_transaction($link);
+
+    try {
+        // ดึงข้อมูลสินค้าก่อนลบเพื่อบันทึก log
+        $productData = mysqli_fetch_assoc($checkResult);
+
+        // 1. ลบข้อมูลสินค้า
+        $sql = "DELETE FROM tb_product WHERE id = '$product_id'";
+        $result1 = mysqli_query($link, $sql);
+
+        if (!$result1) {
+            throw new Exception("Error deleting product: " . mysqli_error($link));
+        }
+
+        // 2. บันทึก log การลบ
+        $current_datetime = date('Y-m-d H:i:s');
+        $user = "System"; // หรือใช้จากผู้ใช้ที่ล็อกอิน
+
+        $log_sql = "INSERT INTO `tb_log_product` (
+            `date`, `User`, `part_num`, `part_name`, `supplier`, `part_qty`, 
+            `location`, `store_name`, `note`, `status`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        $log_stmt = mysqli_prepare($link, $log_sql);
+        $qty = 1;
+        $location = "DELETED";
+        $store_name = "Main Store";
+        $status = "DELETE";
+        $note = "ลบสินค้า: " . $productData['AT_Model'];
+
+        mysqli_stmt_bind_param(
+            $log_stmt,
+            "sssssissss",
+            $current_datetime,
+            $user,
+            $productData['AT_Model'],
+            $productData['AT_Model'],
+            $productData['Sup_name'],
+            $qty,
+            $location,
+            $store_name,
+            $note,
+            $status
+        );
+
+        $result2 = mysqli_stmt_execute($log_stmt);
+
+        if (!$result2) {
+            throw new Exception("Error inserting delete log: " . mysqli_error($link));
+        }
+
+        // Commit transaction
+        mysqli_commit($link);
+        echo json_encode(array("status" => "success", "message" => "ลบข้อมูลสินค้าสำเร็จ"));
+
+    } catch (Exception $e) {
+        // Rollback transaction
+        mysqli_rollback($link);
+        echo json_encode(array("status" => "error", "message" => $e->getMessage()));
+    }
+
+    mysqli_close($link);
+} else if ($action == "getFixList") {
+    $sql = "SELECT * FROM tb_fixlist ORDER BY date DESC";
+    $result = mysqli_query($link, $sql);
+
+    if (!$result) {
+        echo json_encode(null);
+        mysqli_close($link);
+        return;
+    }
+
+    $data = array();
+    while ($row = mysqli_fetch_assoc($result)) {
+        $data[] = $row;
+    }
+
+    echo json_encode($data);
+    mysqli_close($link);
+}
+
+// ฟังก์ชันค้นหา Fix List
+else if ($action == "searchFixList") {
+    $search = isset($_GET['search']) ? $_GET['search'] : '';
+
+    // สร้างเงื่อนไขการค้นหา
+    $searchCondition = "";
+    if (!empty($search)) {
+        $searchCondition = " WHERE Status LIKE '%$search%' 
+                           OR Location LIKE '%$search%' 
+                           OR fixID LIKE '%$search%' 
+                           OR Modal LIKE '%$search%' 
+                           OR Cpu LIKE '%$search%' 
+                           OR Mainboard LIKE '%$search%' 
+                           OR SN LIKE '%$search%' 
+                           OR Customer LIKE '%$search%' 
+                           OR symptom LIKE '%$search%' 
+                           OR did LIKE '%$search%' 
+                           OR equipinsite LIKE '%$search%' 
+                           OR sender LIKE '%$search%' 
+                           OR receiver LIKE '%$search%'";
+    }
+
+    $sql = "SELECT * FROM tb_fixlist" . $searchCondition . " ORDER BY date DESC, id DESC";
+    $result = mysqli_query($link, $sql);
+
+    if (!$result) {
+        echo json_encode(null);
+        mysqli_close($link);
+        return;
+    }
+
+    $data = array();
+    while ($row = mysqli_fetch_assoc($result)) {
+        $data[] = $row;
+    }
+
+    if (empty($data)) {
+        echo json_encode(null);
+    } else {
+        echo json_encode($data);
+    }
+
+    mysqli_close($link);
+}
+
+// ฟังก์ชันเพิ่ม Fix Item ใหม่
+else if ($action == "addFixItem") {
+    // รับข้อมูลจาก GET parameters
+    $status = isset($_GET['Status']) ? mysqli_real_escape_string($link, $_GET['Status']) : '';
+    $location = isset($_GET['Location']) ? mysqli_real_escape_string($link, $_GET['Location']) : '';
+    $date = isset($_GET['date']) ? $_GET['date'] : '';
+    $fixID = isset($_GET['fixID']) ? mysqli_real_escape_string($link, $_GET['fixID']) : '';
+    $modal = isset($_GET['Modal']) ? mysqli_real_escape_string($link, $_GET['Modal']) : '';
+    $cpu = isset($_GET['Cpu']) ? mysqli_real_escape_string($link, $_GET['Cpu']) : '';
+    $mainboard = isset($_GET['Mainboard']) ? mysqli_real_escape_string($link, $_GET['Mainboard']) : '';
+    $sn = isset($_GET['SN']) ? mysqli_real_escape_string($link, $_GET['SN']) : '';
+    $customer = isset($_GET['Customer']) ? mysqli_real_escape_string($link, $_GET['Customer']) : '';
+    $symptom = isset($_GET['symptom']) ? mysqli_real_escape_string($link, $_GET['symptom']) : '';
+    $did = isset($_GET['did']) ? mysqli_real_escape_string($link, $_GET['did']) : '';
+    $equipinsite = isset($_GET['equipinsite']) ? mysqli_real_escape_string($link, $_GET['equipinsite']) : '';
+    $sender = isset($_GET['sender']) ? mysqli_real_escape_string($link, $_GET['sender']) : '';
+    $receiver = isset($_GET['receiver']) ? mysqli_real_escape_string($link, $_GET['receiver']) : '';
+
+    // ตรวจสอบข้อมูลที่จำเป็น
+    if (empty($status) || empty($location) || empty($date) || empty($fixID)) {
+        echo json_encode("error: Missing required fields (Status, Location, Date, Fix ID)");
+        mysqli_close($link);
+        return;
+    }
+
+    // ตรวจสอบว่า fixID ซ้ำหรือไม่
+    $checkSQL = "SELECT fixID FROM tb_fixlist WHERE fixID = '$fixID'";
+    $checkResult = mysqli_query($link, $checkSQL);
+
+    if (mysqli_num_rows($checkResult) > 0) {
+        echo json_encode("error: Fix ID already exists");
+        mysqli_close($link);
+        return;
+    }
+
+    // เพิ่มข้อมูลใหม่
+    $sql = "INSERT INTO `tb_fixlist` (
+                `Status`, `Location`, `date`, `fixID`, `Modal`, `Cpu`, `Mainboard`, 
+                `SN`, `Customer`, `symptom`, `did`, `equipinsite`, `sender`, `receiver`
+            ) VALUES (
+                '$status', '$location', '$date', '$fixID', '$modal', '$cpu', '$mainboard',
+                '$sn', '$customer', '$symptom', '$did', '$equipinsite', '$sender', '$receiver'
+            )";
+
+    $result = mysqli_query($link, $sql);
+
+    if ($result) {
+        echo json_encode("ok");
+    } else {
+        echo json_encode("error: " . mysqli_error($link));
+    }
+
+    mysqli_close($link);
+}
+
+// ฟังก์ชันแก้ไข Fix Item
+else if ($action == "updateFixItem") {
+    $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
+    if ($id <= 0) {
+        echo json_encode(array("status" => "error", "message" => "Invalid ID"));
+        mysqli_close($link);
+        return;
+    }
+
+    // รับข้อมูลจาก GET parameters
+    $status = isset($_GET['Status']) ? mysqli_real_escape_string($link, $_GET['Status']) : '';
+    $location = isset($_GET['Location']) ? mysqli_real_escape_string($link, $_GET['Location']) : '';
+    $date = isset($_GET['date']) ? $_GET['date'] : '';
+    $fixID = isset($_GET['fixID']) ? mysqli_real_escape_string($link, $_GET['fixID']) : '';
+    $modal = isset($_GET['Modal']) ? mysqli_real_escape_string($link, $_GET['Modal']) : '';
+    $cpu = isset($_GET['Cpu']) ? mysqli_real_escape_string($link, $_GET['Cpu']) : '';
+    $mainboard = isset($_GET['Mainboard']) ? mysqli_real_escape_string($link, $_GET['Mainboard']) : '';
+    $sn = isset($_GET['SN']) ? mysqli_real_escape_string($link, $_GET['SN']) : '';
+    $customer = isset($_GET['Customer']) ? mysqli_real_escape_string($link, $_GET['Customer']) : '';
+    $symptom = isset($_GET['symptom']) ? mysqli_real_escape_string($link, $_GET['symptom']) : '';
+    $did = isset($_GET['did']) ? mysqli_real_escape_string($link, $_GET['did']) : '';
+    $equipinsite = isset($_GET['equipinsite']) ? mysqli_real_escape_string($link, $_GET['equipinsite']) : '';
+    $sender = isset($_GET['sender']) ? mysqli_real_escape_string($link, $_GET['sender']) : '';
+    $receiver = isset($_GET['receiver']) ? mysqli_real_escape_string($link, $_GET['receiver']) : '';
+
+    // ตรวจสอบข้อมูลที่จำเป็น
+    if (empty($status) || empty($location) || empty($date) || empty($fixID)) {
+        echo json_encode(array("status" => "error", "message" => "Missing required fields"));
+        mysqli_close($link);
+        return;
+    }
+
+    // ตรวจสอบว่า fixID ซ้ำกับรายการอื่นหรือไม่
+    $checkSQL = "SELECT id FROM tb_fixlist WHERE fixID = '$fixID' AND id != $id";
+    $checkResult = mysqli_query($link, $checkSQL);
+
+    if (mysqli_num_rows($checkResult) > 0) {
+        echo json_encode(array("status" => "error", "message" => "Fix ID already exists"));
+        mysqli_close($link);
+        return;
+    }
+
+    // อัพเดทข้อมูล
+    $sql = "UPDATE `tb_fixlist` SET 
+                `Status` = '$status',
+                `Location` = '$location',
+                `date` = '$date',
+                `fixID` = '$fixID',
+                `Modal` = '$modal',
+                `Cpu` = '$cpu',
+                `Mainboard` = '$mainboard',
+                `SN` = '$sn',
+                `Customer` = '$customer',
+                `symptom` = '$symptom',
+                `did` = '$did',
+                `equipinsite` = '$equipinsite',
+                `sender` = '$sender',
+                `receiver` = '$receiver'
+            WHERE id = $id";
+
+    $result = mysqli_query($link, $sql);
+
+    if ($result) {
+        if (mysqli_affected_rows($link) > 0) {
+            echo json_encode(array("status" => "success", "message" => "Fix item updated successfully"));
+        } else {
+            echo json_encode(array("status" => "error", "message" => "No changes made or record not found"));
+        }
+    } else {
+        echo json_encode(array("status" => "error", "message" => "Error updating fix item: " . mysqli_error($link)));
+    }
+
+    mysqli_close($link);
+}
+
+// ฟังก์ชันลบ Fix Item
+else if ($action == "deleteFixItem") {
+    $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
+    if ($id <= 0) {
+        echo json_encode(array("status" => "error", "message" => "Invalid ID"));
+        mysqli_close($link);
+        return;
+    }
+
+    // ตรวจสอบว่ามีข้อมูลอยู่หรือไม่
+    $checkSQL = "SELECT id FROM tb_fixlist WHERE id = $id";
+    $checkResult = mysqli_query($link, $checkSQL);
+
+    if (mysqli_num_rows($checkResult) == 0) {
+        echo json_encode(array("status" => "error", "message" => "Record not found"));
+        mysqli_close($link);
+        return;
+    }
+
+    // ลบข้อมูล
+    $sql = "DELETE FROM tb_fixlist WHERE id = $id";
+    $result = mysqli_query($link, $sql);
+
+    if ($result) {
+        if (mysqli_affected_rows($link) > 0) {
+            echo json_encode(array("status" => "success", "message" => "Fix item deleted successfully"));
+        } else {
+            echo json_encode(array("status" => "error", "message" => "Record not found"));
+        }
+    } else {
+        echo json_encode(array("status" => "error", "message" => "Error deleting fix item: " . mysqli_error($link)));
+    }
+
+    mysqli_close($link);
+}
+
+// ฟังก์ชันดึงข้อมูล Fix Item รายการเดียว
+else if ($action == "getFixItem") {
+    $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
+    if ($id <= 0) {
+        echo json_encode(array("status" => "error", "message" => "Invalid ID"));
+        mysqli_close($link);
+        return;
+    }
+
+    $sql = "SELECT * FROM tb_fixlist WHERE id = $id";
+    $result = mysqli_query($link, $sql);
+
+    if (!$result) {
+        echo json_encode(array("status" => "error", "message" => "Query failed: " . mysqli_error($link)));
+        mysqli_close($link);
+        return;
+    }
+
+    if (mysqli_num_rows($result) > 0) {
+        $row = mysqli_fetch_assoc($result);
+        echo json_encode($row);
+    } else {
+        echo json_encode(array("status" => "error", "message" => "Record not found"));
+    }
+
+    mysqli_close($link);
+}
+
+// ฟังก์ชันดึงสถิติ Fix List (เพิ่มเติม - ไม่บังคับ)
+else if ($action == "getFixListStats") {
+    $sql = "SELECT 
+                COUNT(*) as total,
+                COUNT(CASE WHEN Status = 'pending' THEN 1 END) as pending,
+                COUNT(CASE WHEN Status = 'in-progress' THEN 1 END) as in_progress,
+                COUNT(CASE WHEN Status = 'completed' THEN 1 END) as completed,
+                COUNT(CASE WHEN Status = 'cancelled' THEN 1 END) as cancelled
+            FROM tb_fixlist";
+
+    $result = mysqli_query($link, $sql);
+
+    if (!$result) {
+        echo json_encode(array("status" => "error", "message" => "Stats query failed: " . mysqli_error($link)));
+        mysqli_close($link);
+        return;
+    }
+
+    if (mysqli_num_rows($result) > 0) {
+        $stats = mysqli_fetch_assoc($result);
+        echo json_encode($stats);
+    } else {
+        echo json_encode(array("total" => 0, "pending" => 0, "in_progress" => 0, "completed" => 0, "cancelled" => 0));
+    }
+
+    mysqli_close($link);
+} else if ($action == "insertStock") {
+    $date = $_GET['date'];
+    $uname = $_GET['uname'];        // User column
+    $serial = $_GET['serial'];      // serial_num column
+    $partnum = $_GET['partnum'];    // part_num column
+    $partname = $_GET['partname'];  // part_name column
+    $parttype = $_GET['parttype'];  // part_type column
+    $partlo = $_GET['partlo'];      // part_location column
+    $qty = $_GET['qty'];            // qty column
+    $storeid = $_GET['storeid'];    // store_id column
+    $storename = $_GET['storename']; // store_name column
+    $note = $_GET['note'];          // note column
+    $status = $_GET['status'];      // status column
+
+
+    $sql = "INSERT INTO `tb_log_edit`(`date`, `User`, `serial_num`, `part_num`, `part_name`, `part_type`, `part_location`,`qty`,`store_id`,`store_name`,`note`,`status`) 
+            VALUES ('$date','$uname','$serial','$partnum','$partname','$parttype','$partlo','$qty','$storeid','$storename','$note','$status')";
+
+    $result = mysqli_query($link, $sql);
+
+    if ($result) {
+        echo json_encode("ok");
+    }
+    mysqli_close($link);
+}else if ($action == "updateStockItem") {
+    $part_num = isset($_GET['part_num']) ? $_GET['part_num'] : '';
+    $part_name = isset($_GET['part_name']) ? $_GET['part_name'] : '';
+    $supplier = isset($_GET['supplier']) ? $_GET['supplier'] : '';
+    $qty = isset($_GET['qty']) ? $_GET['qty'] : '';
+    $location = isset($_GET['location']) ? $_GET['location'] : '';
+    $store_name = isset($_GET['store_name']) ? $_GET['store_name'] : '';
+    $note = isset($_GET['note']) ? $_GET['note'] : '';
+    $serial_num = isset($_GET['serial_num']) ? $_GET['serial_num'] : '';
+    $sup_serial = isset($_GET['sup_serial']) ? $_GET['sup_serial'] : '';
+    $sup_barcode = isset($_GET['sup_barcode']) ? $_GET['sup_barcode'] : '';
+    $updated_by = isset($_GET['updated_by']) ? $_GET['updated_by'] : '';
+    $updated_at = isset($_GET['updated_at']) ? $_GET['updated_at'] : '';
+
+    // ตรวจสอบข้อมูลที่จำเป็น
+    if (empty($serial_num) || empty($part_num) || empty($part_name)) {
+        echo json_encode(array("error" => "ข้อมูลไม่ครบถ้วน"));
+        mysqli_close($link);
+        exit;
+    }
+
+    // ตรวจสอบว่า qty เป็นตัวเลข
+    if (!is_numeric($qty) || $qty < 0) {
+        echo json_encode(array("error" => "จำนวนสินค้าต้องเป็นตัวเลขและมากกว่าหรือเท่ากับ 0"));
+        mysqli_close($link);
+        exit;
+    }
+
+    // อัปเดตข้อมูลใน tb_stock โดยใช้ serial_num เป็นเงื่อนไข
+    $sql = "UPDATE tb_stock SET 
+            part_num = ?, 
+            part_name = ?, 
+            supplier = ?, 
+            qty = ?, 
+            location = ?, 
+            store_name = ?, 
+            note = ?, 
+            sup_serial = ?, 
+            sup_barcode = ?
+            WHERE serial_num = ?";
+
+    $stmt = mysqli_prepare($link, $sql);
+    
+    if (!$stmt) {
+        echo json_encode(array("error" => "Error preparing statement: " . mysqli_error($link)));
+        mysqli_close($link);
+        exit;
+    }
+
+    mysqli_stmt_bind_param(
+        $stmt,
+        "ssssssssss",
+        $part_num,
+        $part_name,
+        $supplier,
+        $qty,
+        $location,
+        $store_name,
+        $note,
+        $sup_serial,
+        $sup_barcode,
+        $serial_num
+    );
+
+    $executeResult = mysqli_stmt_execute($stmt);
+
+    if ($executeResult) {
+        // ตรวจสอบว่ามีการอัปเดตหรือไม่
+        $affectedRows = mysqli_stmt_affected_rows($stmt);
+        
+        if ($affectedRows > 0) {
+            echo json_encode("ok");
+        } else {
+            echo json_encode(array("error" => "ไม่พบข้อมูลที่ต้องการอัปเดตหรือข้อมูลไม่เปลี่ยนแปลง"));
+        }
+    } else {
+        echo json_encode(array("error" => "Error updating stock: " . mysqli_stmt_error($stmt)));
+    }
+
+    mysqli_stmt_close($stmt);
+    mysqli_close($link);
+    exit;
+}
+
+// ฟังก์ชันสำหรับบันทึก log การแก้ไข
+else if ($action == "insertEditLog") {
+    $date = isset($_GET['date']) ? $_GET['date'] : '';
+    $user = isset($_GET['user']) ? $_GET['user'] : '';
+    $serial_num = isset($_GET['serial_num']) ? $_GET['serial_num'] : '';
+    $part_num = isset($_GET['part_num']) ? $_GET['part_num'] : '';
+    $part_name = isset($_GET['part_name']) ? $_GET['part_name'] : '';
+    $action_type = isset($_GET['action']) ? $_GET['action'] : '';
+    $note = isset($_GET['note']) ? $_GET['note'] : '';
+
+    $sql = "INSERT INTO tb_log_edit (
+                date, 
+                User, 
+                serial_num, 
+                part_num, 
+                part_name, 
+                action_type, 
+                note
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)";
+
+    $stmt = mysqli_prepare($link, $sql);
+    
+    if ($stmt) {
+        mysqli_stmt_bind_param(
+            $stmt,
+            "sssssss",
+            $date,
+            $user,
+            $serial_num,
+            $part_num,
+            $part_name,
+            $action_type,
+            $note
+        );
+
+        $executeResult = mysqli_stmt_execute($stmt);
+        
+        if ($executeResult) {
+            echo json_encode("ok");
+        } else {
+            echo json_encode(array("error" => "ไม่สามารถบันทึก log ได้"));
+        }
+        
+        mysqli_stmt_close($stmt);
+    } else {
+        echo json_encode(array("error" => "Error preparing log statement"));
+    }
+
+    mysqli_close($link);
+    exit;
+}
+
+// ฟังก์ชันสำหรับดึงข้อมูลรายละเอียดสินค้า (เพิ่ม id ในการ select)
+else if ($action == "getItemDetails") {
+    $part_num = $_GET['part_num'];
+    $location = $_GET['location'];
+
+    $sql = "SELECT id, part_num, part_name, supplier, qty, location, 
+            store_name, note, serial_num, sup_serial, sup_barcode, datetime
+            FROM tb_stock 
+            WHERE part_num = ? AND location = ? 
+            ORDER BY datetime DESC";
+
+    $stmt = mysqli_prepare($link, $sql);
+    mysqli_stmt_bind_param($stmt, "ss", $part_num, $location);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+
+    $data = array();
+    while ($row = mysqli_fetch_assoc($result)) {
+        $data[] = $row;
+    }
+
+    echo json_encode($data);
+    mysqli_close($link);
+    exit;
+}else if ($action == "outProduct") {
+    // รับข้อมูลจาก GET parameters
+    $product_id = $_GET['product_id'] ?? '';
+    $customer = isset($_GET['customer']) ? mysqli_real_escape_string($link, $_GET['customer']) : '';
+    $quatation_no = isset($_GET['quatation_no']) ? mysqli_real_escape_string($link, $_GET['quatation_no']) : '';
+    $po_number = isset($_GET['po_number']) ? mysqli_real_escape_string($link, $_GET['po_number']) : '';
+    $dateout = $_GET['dateout'] ?? '';
+    $note = isset($_GET['note']) ? mysqli_real_escape_string($link, $_GET['note']) : '';
+    $product_status = 'ขายแล้ว';
+
+    // ตรวจสอบข้อมูลที่จำเป็น
+    if (empty($product_id) || empty($customer) || empty($dateout)) {
+        echo json_encode(array("status" => "error", "message" => "ข้อมูลไม่ครบถ้วน"));
+        mysqli_close($link);
+        return;
+    }
+
+    // ตรวจสอบว่ามีสินค้าอยู่จริงและยังไม่ได้ขาย
+    $checkSql = "SELECT AT_Model, AT_SN, Product_status FROM tb_product WHERE AT_SN = '$product_id'";
+    $checkResult = mysqli_query($link, $checkSql);
+
+    if (mysqli_num_rows($checkResult) == 0) {
+        echo json_encode(array("status" => "error", "message" => "ไม่พบข้อมูลสินค้า"));
+        mysqli_close($link);
+        return;
+    }
+
+    $productData = mysqli_fetch_assoc($checkResult);
+    
+    // ตรวจสอบว่าสินค้ายังไม่ได้ขาย
+    if ($productData['Product_status'] === 'ขายแล้ว') {
+        echo json_encode(array("status" => "error", "message" => "สินค้านี้ขายไปแล้ว"));
+        mysqli_close($link);
+        return;
+    }
+
+    // เริ่มการทำธุรกรรม
+    mysqli_begin_transaction($link);
+
+    try {
+        // 1. อัพเดทข้อมูลสินค้า
+        $updateSql = "UPDATE tb_product SET 
+                     Customer = '$customer',
+                     Quatation_No = '$quatation_no',
+                     PO_number = '$po_number',
+                     Dateout = '$dateout',
+                     Product_status = '$product_status',
+                     Note = CONCAT(IFNULL(Note, ''), IF(IFNULL(Note, '') = '', '', '\n'), 'OUT: $note')
+                     WHERE AT_SN = '$product_id'";
+
+        $updateResult = mysqli_query($link, $updateSql);
+
+        if (!$updateResult) {
+            throw new Exception("Error updating product: " . mysqli_error($link));
+        }
+
+        // 2. บันทึกลงใน tb_log_pc (ใช้ column ที่มีอยู่แล้ว)
+        $log_sql = "INSERT INTO `tb_log_pc` (`ATC_modal`, `SN`, `status`, `date`, `user`) 
+                    VALUES (?, ?, ?, ?, ?)";
+
+        $log_stmt = mysqli_prepare($link, $log_sql);
+        $status_log = "OUT";
+        $user = "System"; // หรือใช้จากผู้ใช้ที่ล็อกอิน
+        
+        mysqli_stmt_bind_param(
+            $log_stmt,
+            "sssss",
+            $productData['AT_Model'],
+            $productData['AT_SN'],
+            $status_log,
+            $dateout,
+            $user
+        );
+
+        $log_result = mysqli_stmt_execute($log_stmt);
+
+        if (!$log_result) {
+            throw new Exception("Error inserting log: " . mysqli_stmt_error($log_stmt));
+        }
+
+        // Commit transaction
+        mysqli_commit($link);
+        echo json_encode("ok");
+
+    } catch (Exception $e) {
+        // Rollback transaction
+        mysqli_rollback($link);
+        echo json_encode(array("status" => "error", "message" => $e->getMessage()));
+    }
+
+    mysqli_close($link);
+}
+// ฟังก์ชันดึงข้อมูลสินค้าตาม Serial Number
+else if ($action == "getProductBySerial") {
+    $serial = isset($_GET['serial']) ? mysqli_real_escape_string($link, $_GET['serial']) : '';
+
+    if (empty($serial)) {
+        echo json_encode(array("status" => "error", "message" => "ไม่ได้ระบุ Serial Number"));
+        mysqli_close($link);
+        return;
+    }
+
+    // ค้นหาสินค้าด้วย AT_SN
+    $sql = "SELECT * FROM tb_product WHERE AT_SN = '$serial' LIMIT 1";
+    $result = mysqli_query($link, $sql);
+
+    if (!$result) {
+        echo json_encode(array("status" => "error", "message" => "Query failed: " . mysqli_error($link)));
+        mysqli_close($link);
+        return;
+    }
+
+    if (mysqli_num_rows($result) > 0) {
+        $productData = mysqli_fetch_assoc($result);
+        echo json_encode($productData);
+    } else {
+        echo json_encode(array("status" => "error", "message" => "ไม่พบข้อมูลสินค้าที่มี Serial Number นี้"));
+    }
+
+    mysqli_close($link);
+}else if ($action == "getPcLog") {
+    $sql = "SELECT * FROM tb_log_pc ORDER BY date DESC, logID DESC LIMIT 1000";
+    $result = mysqli_query($link, $sql);
+
+    if (!$result) {
+        echo json_encode(null);
+        mysqli_close($link);
+        return;
+    }
+
+    $data = array();
+    while ($row = mysqli_fetch_assoc($result)) {
+        $data[] = $row;
+    }
+
+    echo json_encode($data);
+    mysqli_close($link);
+}
+
+// ฟังก์ชันใหม่: ค้นหา PC Log
+else if ($action == "searchPcLog") {
+    $search = isset($_GET['search']) ? $_GET['search'] : '';
+    $status = isset($_GET['status']) ? $_GET['status'] : '';
+    $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : '';
+    $end_date = isset($_GET['end_date']) ? $_GET['end_date'] : '';
+
+    // สร้างคำสั่ง SQL พื้นฐาน
+    $sql = "SELECT * FROM tb_log_pc WHERE 1=1";
+
+    // เพิ่มเงื่อนไขการค้นหา
+    if (!empty($search)) {
+        $search = mysqli_real_escape_string($link, $search);
+        $sql .= " AND (ATC_modal LIKE '%$search%' 
+                 OR SN LIKE '%$search%' 
+                 OR user LIKE '%$search%')";
+    }
+
+    // เพิ่มเงื่อนไขการกรองตามสถานะ
+    if (!empty($status) && $status != 'all') {
+        $status = mysqli_real_escape_string($link, $status);
+        $sql .= " AND status = '$status'";
+    }
+
+    // เพิ่มเงื่อนไขการกรองตามช่วงวันที่
+    if (!empty($start_date)) {
+        $start_date = mysqli_real_escape_string($link, $start_date);
+        $sql .= " AND date >= '$start_date'";
+    }
+
+    if (!empty($end_date)) {
+        $end_date = mysqli_real_escape_string($link, $end_date);
+        $sql .= " AND date <= '$end_date'";
+    }
+
+    // เรียงลำดับตามวันที่ล่าสุด
+    $sql .= " ORDER BY date DESC, logID DESC LIMIT 1000";
+
+    $result = mysqli_query($link, $sql);
+
+    if (!$result) {
+        echo json_encode(null);
+        mysqli_close($link);
+        return;
+    }
+
+    $data = array();
+    while ($row = mysqli_fetch_assoc($result)) {
+        $data[] = $row;
+    }
+
+    echo json_encode($data);
+    mysqli_close($link);
+}
+
+// ฟังก์ชันใหม่: เพิ่ม PC Log ใหม่
+else if ($action == "addPcLog") {
+    $atc_modal = isset($_GET['atc_modal']) ? mysqli_real_escape_string($link, $_GET['atc_modal']) : '';
+    $sn = isset($_GET['sn']) ? mysqli_real_escape_string($link, $_GET['sn']) : '';
+    $status = isset($_GET['status']) ? mysqli_real_escape_string($link, $_GET['status']) : '';
+    $date = isset($_GET['date']) ? $_GET['date'] : '';
+    $user = isset($_GET['user']) ? mysqli_real_escape_string($link, $_GET['user']) : 'System';
+
+    // ตรวจสอบข้อมูลที่จำเป็น
+    if (empty($atc_modal) || empty($sn) || empty($status) || empty($date)) {
+        echo json_encode(array("status" => "error", "message" => "ข้อมูลไม่ครบถ้วน"));
+        mysqli_close($link);
+        return;
+    }
+
+    // Validate status
+    $valid_statuses = array('IN', 'OUT', 'BORROW', 'RETURN');
+    if (!in_array($status, $valid_statuses)) {
+        echo json_encode(array("status" => "error", "message" => "สถานะไม่ถูกต้อง"));
+        mysqli_close($link);
+        return;
+    }
+
+    // บันทึกลงใน tb_log_pc
+    $log_sql = "INSERT INTO `tb_log_pc` (`ATC_modal`, `SN`, `status`, `date`, `user`) 
+                VALUES (?, ?, ?, ?, ?)";
+
+    $log_stmt = mysqli_prepare($link, $log_sql);
+    
+    if (!$log_stmt) {
+        echo json_encode(array("status" => "error", "message" => "Prepare failed: " . mysqli_error($link)));
+        mysqli_close($link);
+        return;
+    }
+    
+    mysqli_stmt_bind_param(
+        $log_stmt,
+        "sssss",
+        $atc_modal,
+        $sn,
+        $status,
+        $date,
+        $user
+    );
+
+    $log_result = mysqli_stmt_execute($log_stmt);
+
+    if ($log_result) {
+        echo json_encode("ok");
+    } else {
+        echo json_encode(array("status" => "error", "message" => "Error inserting log: " . mysqli_stmt_error($log_stmt)));
+    }
+
+    mysqli_stmt_close($log_stmt);
+    mysqli_close($link);
+}else {
     echo json_encode("fail");
     mysqli_close($link);
 }
