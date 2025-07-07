@@ -10,7 +10,6 @@ function TypeList() {
   const [types, setTypes] = useState([]);
   const [currentTypePageData, setCurrentTypePageData] = useState([]);
   const [currentTypePage, setCurrentTypePage] = useState(1);
-  const [sortConfig, setSortConfig] = useState({ key: '', direction: '' });
   const itemsPerPage = 15;
   
   // ฟังก์ชันดึงข้อมูลประเภท
@@ -80,35 +79,14 @@ function TypeList() {
     }
   };
 
-const handleSort = (key) => {
-  let direction = "ascending";
-  if (sortConfig.key === key && sortConfig.direction === "ascending") {
-    direction = "descending";
-  }
-  setSortConfig({ key, direction });
-};
-
-   const getSortIcon = (columnKey) => {
-  if (sortConfig.key !== columnKey) {
-    return (
-      <span style={{ color: "#888" }}>△</span>
-    );
-  }
-  return sortConfig.direction === 'ascending' ? (
-    <span style={{ color: "#00e676" }}>▲</span>
-  ) : (
-    <span style={{ color: "#00e676" }}>▼</span>
-  );
-};
   
    // ฟังก์ชันแบ่งหน้าสำหรับข้อมูลประเภท
-  const paginateTypes = (pageNumber, data = types) => {
-  const startIndex = (pageNumber - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  setCurrentTypePageData(data.slice(startIndex, endIndex));
-  setCurrentTypePage(pageNumber);
-};
-
+  const paginateTypes = (pageNumber) => {
+    const startIndex = (pageNumber - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setCurrentTypePageData(types.slice(startIndex, endIndex));
+    setCurrentTypePage(pageNumber);
+  };
 
   // ดึงข้อมูลเมื่อโหลดคอมโพเนนต์
   useEffect(() => {
@@ -119,23 +97,6 @@ const handleSort = (key) => {
   useEffect(() => {
     paginateTypes(currentTypePage);
   }, [types]);
-
-  useEffect(() => {
-  let sortedTypes = [...types];
-  if (sortConfig.key) {
-    sortedTypes.sort((a, b) => {
-      if (a[sortConfig.key] < b[sortConfig.key]) {
-        return sortConfig.direction === "ascending" ? -1 : 1;
-      }
-      if (a[sortConfig.key] > b[sortConfig.key]) {
-        return sortConfig.direction === "ascending" ? 1 : -1;
-      }
-      return 0;
-    });
-  }
-  paginateTypes(currentTypePage, sortedTypes);
-}, [types, sortConfig, currentTypePage]);
-
 
   // ฟังก์ชันจัดการการบันทึก
   const handleSave = () => {
@@ -254,16 +215,9 @@ const handleSort = (key) => {
                   <thead style={{ backgroundColor: "#333333" }}>
                     <tr className="text-center">
                       <th className="py-3" style={{ color: "#e0e0e0" }}>No.</th>
-                      <th className="py-3" style={{ cursor: "pointer" }} onClick={() => handleSort("type_name")}>
-  Type Name {getSortIcon("type_name")}
-</th>
-<th className="py-3" style={{ cursor: "pointer" }} onClick={() => handleSort("type_prefix")}>
-  Type Prefix {getSortIcon("type_prefix")}
-</th>
-<th className="py-3" style={{ cursor: "pointer" }} onClick={() => handleSort("type_detail")}>
-  Detail {getSortIcon("type_detail")}
-</th>
-
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Type Name</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Type Prefix</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Detail</th>
                       <th className="py-3" style={{ color: "#e0e0e0" }}>Action</th>
                     </tr>
                   </thead>

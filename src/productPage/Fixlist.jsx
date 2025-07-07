@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FormControl, Button, Table, Card, Badge, Container, Modal, Form, Row, Col } from "react-bootstrap";
 import PaginationComponent from "../components/PaginationComponent";
-import FixlistModal from "./FixlistModal";
 import Swal from "sweetalert2";
 import {
   Search,
@@ -29,9 +28,6 @@ function FixListPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [validated, setValidated] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [showItemDetail, setShowItemDetail] = useState(false);
-  const [selectedItemDetail, setSelectedItemDetail] = useState({ fixID: "", customer: "" });
-
 
   const itemsPerPage = 15;
 
@@ -80,13 +76,6 @@ function FixListPage() {
     }
   };
 
-  const handleFixIdClick = (fixID) => {
-  setSelectedItemDetail({ fixID });
-  setShowItemDetail(true);
-};
-
-
-  
   // ฟังก์ชันค้นหา
   const handleSearch = async () => {
     const searchTerm = searchRef.current.value.toLowerCase().trim();
@@ -132,58 +121,57 @@ function FixListPage() {
   };
 
   // ฟังก์ชันลบข้อมูล
-  const handleDelete = async (fixID) => {
-  const result = await Swal.fire({
-    title: 'คุณแน่ใจหรือไม่?',
-    text: "คุณต้องการลบข้อมูลทั้งหมดของ FixID นี้หรือไม่?",
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#e53935',
-    cancelButtonColor: '#6c757d',
-    confirmButtonText: 'ใช่, ลบเลย!',
-    cancelButtonText: 'ยกเลิก'
-  });
+  const handleDelete = async (id) => {
+    const result = await Swal.fire({
+      title: 'คุณแน่ใจหรือไม่?',
+      text: "คุณต้องการลบข้อมูลนี้หรือไม่?",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#e53935',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'ใช่, ลบเลย!',
+      cancelButtonText: 'ยกเลิก'
+    });
 
-  if (result.isConfirmed) {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SERVER}/Store.php?action=deleteFixItem&fixID=${fixID}`,
-        { method: "DELETE" }
-      );
-      const data = await response.json();
-
-      if (data.status === "success") {
-        Swal.fire({
-          position: "center",
-          icon: "success",
-          title: "ลบข้อมูลสำเร็จ",
-          showConfirmButton: false,
-          timer: 1500,
-        });
-        fetchFixList();
-      } else {
+    if (result.isConfirmed) {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SERVER}/Store.php?action=deleteFixItem&id=${id}`,
+          { method: "DELETE" }
+        );
+        const data = await response.json();
+        
+        if (data.status === "success") {
+          Swal.fire({
+            position: "center",
+            icon: "success",
+            title: "ลบข้อมูลสำเร็จ",
+            showConfirmButton: false,
+            timer: 1500,
+          });
+          fetchFixList();
+        } else {
+          Swal.fire({
+            position: "center",
+            icon: "error",
+            title: "ไม่สามารถลบข้อมูลได้",
+            text: data.message,
+            showConfirmButton: false,
+            timer: 2000,
+          });
+        }
+      } catch (error) {
+        console.error("Error deleting item:", error);
         Swal.fire({
           position: "center",
           icon: "error",
-          title: "ไม่สามารถลบข้อมูลได้",
-          text: data.message,
+          title: "เกิดข้อผิดพลาดในการลบข้อมูล",
           showConfirmButton: false,
           timer: 2000,
         });
       }
-    } catch (error) {
-      console.error("Error deleting item:", error);
-      Swal.fire({
-        position: "center",
-        icon: "error",
-        title: "เกิดข้อผิดพลาดในการลบข้อมูล",
-        showConfirmButton: false,
-        timer: 2000,
-      });
     }
-  }
-};
-
+  };
 
   // ฟังก์ชันสร้าง Fix ID อัตโนมัติ
   const generateFixId = async () => {
@@ -237,33 +225,28 @@ function FixListPage() {
   };
 
   // ฟังก์ชันเปิด Modal สำหรับแก้ไข
- const handleEdit = (item) => {
-  setEditingItem(item);
-  setShowEditModal(true);
-
-  
-  setTimeout(async () => {
-      // ตั้งวันที่เป็นวันปัจจุบัน
-      const today = new Date();
-const todayString = today.toISOString().split('T')[0];
-if (dateRef.current) dateRef.current.value = todayString;
-
-     
-      
-
-    if (fixIdRef.current) fixIdRef.current.value = item.fixID || '';
-    if (modalRef.current) modalRef.current.value = item.Modal || '';
-    if (cpuRef.current) cpuRef.current.value = item.Cpu || '';
-    if (mainboardRef.current) mainboardRef.current.value = item.Mainboard || '';
-    if (snRef.current) snRef.current.value = item.SN || '';
-    if (customerRef.current) customerRef.current.value = item.Customer || '';
-    if (symptomRef.current) symptomRef.current.value = item.symptom || '';
-    if (didRef.current) didRef.current.value = item.did || '';
-    if (equipinsiteRef.current) equipinsiteRef.current.value = item.equipinsite || '';
-    if (senderRef.current) senderRef.current.value = item.sender || '';
-    if (receiverRef.current) receiverRef.current.value = item.receiver || '';
-  }, 100);
-};
+  const handleEdit = (item) => {
+    setEditingItem(item);
+    setShowEditModal(true);
+    
+    // กำหนดค่าเริ่มต้นในฟอร์ม
+    setTimeout(() => {
+      if (statusRef.current) statusRef.current.value = item.Status || '';
+      if (locationRef.current) locationRef.current.value = item.Location || '';
+      if (dateRef.current) dateRef.current.value = item.date || '';
+      if (fixIdRef.current) fixIdRef.current.value = item.fixID || '';
+      if (modalRef.current) modalRef.current.value = item.Modal || '';
+      if (cpuRef.current) cpuRef.current.value = item.Cpu || '';
+      if (mainboardRef.current) mainboardRef.current.value = item.Mainboard || '';
+      if (snRef.current) snRef.current.value = item.SN || '';
+      if (customerRef.current) customerRef.current.value = item.Customer || '';
+      if (symptomRef.current) symptomRef.current.value = item.symptom || '';
+      if (didRef.current) didRef.current.value = item.did || '';
+      if (equipinsiteRef.current) equipinsiteRef.current.value = item.equipinsite || '';
+      if (senderRef.current) senderRef.current.value = item.sender || '';
+      if (receiverRef.current) receiverRef.current.value = item.receiver || '';
+    }, 100);
+  };
 
   // ฟังก์ชันบันทึกข้อมูล
   const handleSubmit = async (event) => {
@@ -296,7 +279,7 @@ if (dateRef.current) dateRef.current.value = todayString;
     try {
       const action = editingItem ? 'updateFixItem' : 'addFixItem';
       const url = editingItem 
-        ? `${import.meta.env.VITE_SERVER}/Store.php?action=${action}&id=${editingItem.id}`
+        ? `${import.meta.env.VITE_SERVER}/Store.php?action=${action}&id=${formData.fixID}`
         : `${import.meta.env.VITE_SERVER}/Store.php?action=${action}`;
 
       const queryParams = new URLSearchParams(formData).toString();
@@ -499,10 +482,10 @@ if (dateRef.current) dateRef.current.value = todayString;
                   <thead style={{ backgroundColor: "#333333" }}>
                     <tr className="text-center">
                       <th className="py-3" style={{ color: "#e0e0e0" }}>No.</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>Fix ID</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Status</th>
                       <th className="py-3" style={{ color: "#e0e0e0" }}>Location</th>
                       <th className="py-3" style={{ color: "#e0e0e0" }}>Date</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>Status</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Fix ID</th>
                       <th className="py-3" style={{ color: "#e0e0e0" }}>Model</th>
                       <th className="py-3" style={{ color: "#e0e0e0" }}>CPU</th>
                       <th className="py-3" style={{ color: "#e0e0e0" }}>Serial Number</th>
@@ -511,94 +494,71 @@ if (dateRef.current) dateRef.current.value = todayString;
                     </tr>
                   </thead>
 
-                 <tbody>
-  {loading ? (
-    <tr>
-      <td colSpan="10" className="text-center py-5" style={{ color: "#bdbdbd" }}>
-        <div className="d-flex flex-column align-items-center">
-          <div className="spinner-border text-success mb-3" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
-          <span className="fw-medium">กำลังโหลดข้อมูล...</span>
-        </div>
-      </td>
-    </tr>
-  ) : currentPageData.length === 0 ? (
-    <tr>
-      <td colSpan="10" className="text-center py-5" style={{ color: "#bdbdbd" }}>
-        <div className="d-flex flex-column align-items-center">
-          <Tools size={40} className="mb-2 text-muted" />
-          <span className="fw-medium">No Data</span>
-        </div>
-      </td>
-    </tr>
-  ) : (
-    currentPageData.map((item, index) => (
-      <tr key={item.id || index} className="text-center text-white">
-        {/* No. */}
-        <td>{(currentPage - 1) * itemsPerPage + index + 1}</td>
-
-        {/* Fix ID */}
-        <td>
-          <Button
-            variant="link"
-            className="p-0 text-white text-decoration-none"
-            onClick={() => handleFixIdClick(item.fixID)}
-          >
-            <Badge bg="dark" text="light" style={{
-              fontWeight: "medium",
-              backgroundColor: "#424242",
-              padding: "6px 8px",
-              borderRadius: "4px"
-            }}>
-              {item.fixID || '-'}
-            </Badge>
-          </Button>
-        </td>
-
-        {/* Location */}
-        <td>
-          <div className="d-flex align-items-center justify-content-center">
-            <GeoAltFill size={14} className="me-1 text-secondary" />
-            {item.Location || '-'}
-          </div>
-        </td>
-
-        {/* Date */}
-        <td>
-          <small className="text-muted d-flex align-items-center justify-content-center">
-            <CalendarDate size={12} className="me-1" />
-            {formatDate(item.date)}
-          </small>
-        </td>
-
-        {/* Status */}
-        <td>{getStatusBadge(item.Status)}</td>
-
-        {/* Model */}
-        <td className="fw-medium text-white">
-          <Display className="me-2 text-success" size={14} />
-          {item.Modal || '-'}
-        </td>
-
-        {/* CPU */}
-        <td>
-          <div className="d-flex align-items-center justify-content-center">
-            <Cpu size={14} className="me-1 text-info" />
-            {item.Cpu || '-'}
-          </div>
-        </td>
-
-        {/* Serial Number */}
-        <td>{item.SN || '-'}</td>
-
-        {/* Customer */}
-        <td>
-          <div className="d-flex align-items-center justify-content-center">
-            <PersonFill size={14} className="me-1 text-info" />
-            {item.Customer || '-'}
-          </div>
-        </td>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan="10" className="text-center py-5" style={{ color: "#bdbdbd" }}>
+                          <div className="d-flex flex-column align-items-center">
+                            <div className="spinner-border text-success mb-3" role="status">
+                              <span className="visually-hidden">Loading...</span>
+                            </div>
+                            <span className="fw-medium">กำลังโหลดข้อมูล...</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : currentPageData.length === 0 ? (
+                      <tr>
+                        <td colSpan="10" className="text-center py-5" style={{ color: "#bdbdbd" }}>
+                          <div className="d-flex flex-column align-items-center">
+                            <Tools size={40} className="mb-2 text-muted" />
+                            <span className="fw-medium">No Data</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      currentPageData.map((item, index) => (
+                        <tr key={item.id || index} className="text-center text-white">
+                          <td>{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                          <td>{getStatusBadge(item.Status)}</td>
+                          <td>
+                            <div className="d-flex align-items-center justify-content-center">
+                              <GeoAltFill size={14} className="me-1 text-secondary" />
+                              {item.Location || '-'}
+                            </div>
+                          </td>
+                          <td>
+                            <small className="text-muted d-flex align-items-center justify-content-center">
+                              <CalendarDate size={12} className="me-1" />
+                              {formatDate(item.date)}
+                            </small>
+                          </td>
+                          <td>
+                            <Badge bg="dark" text="light" style={{
+                              fontWeight: "medium",
+                              backgroundColor: "#424242",
+                              padding: "6px 8px",
+                              borderRadius: "4px"
+                            }}>
+                              {item.fixID || '-'}
+                            </Badge>
+                          </td>
+                          <td className="fw-medium text-white">
+                            <Display className="me-2 text-success" size={14} />
+                            {item.Modal || '-'}
+                          </td>
+                          <td>
+                            <div className="d-flex align-items-center justify-content-center">
+                              <Cpu size={14} className="me-1 text-info" />
+                              {item.Cpu || '-'}
+                            </div>
+                          </td>
+                          <td>{item.SN || '-'}</td>
+                          <td>
+                            <div className="d-flex align-items-center justify-content-center">
+                              <PersonFill size={14} className="me-1 text-info" />
+                              {item.Customer || '-'}
+                            </div>
+                          </td>
                           <td>
                             <div className="d-flex justify-content-center gap-1">
                               <Button
@@ -621,7 +581,7 @@ if (dateRef.current) dateRef.current.value = todayString;
                                   backgroundColor: "#e53935",
                                   borderColor: "#e53935"
                                 }}
-                                onClick={() => handleDelete(item.fixID)}
+                                onClick={() => handleDelete(item.id)}
                               >
                                 <Trash size={16} />
                               </Button>
@@ -724,29 +684,29 @@ if (dateRef.current) dateRef.current.value = todayString;
                 </Form.Control.Feedback>
               </Form.Group>
 
-            <Form.Group as={Col} md="6" className="mb-3">
-  <Form.Label><b>Date *</b></Form.Label>
-  <Form.Control
-    type="date"
-    ref={dateRef}
-    required
-    readOnly // ✅ ห้ามแก้ไขตลอด
-    defaultValue={new Date().toISOString().split('T')[0]} 
-    style={{
-      backgroundColor: "#333",
-      color: "#fff",
-      border: "1px solid #444",
-      cursor: "not-allowed"
-    }}
-  />
-  <Form.Control.Feedback type="invalid">
-    <b>กรุณาเลือกวันที่</b>
-  </Form.Control.Feedback>
-  <Form.Text className="text-muted">
-    วันที่จะถูกตั้งเป็นวันปัจจุบันอัตโนมัติ
-  </Form.Text>
-</Form.Group>
-
+              <Form.Group as={Col} md="6" className="mb-3">
+                <Form.Label><b>Date *</b></Form.Label>
+                <Form.Control
+                  type="date"
+                  ref={dateRef}
+                  required
+                  readOnly={!editingItem} // อ่านอย่างเดียวสำหรับการเพิ่มใหม่
+                  style={{
+                    backgroundColor: "#333",
+                    color: "#fff",
+                    border: "1px solid #444",
+                    cursor: !editingItem ? "not-allowed" : "text"
+                  }}
+                />
+                <Form.Control.Feedback type="invalid">
+                  <b>กรุณาเลือกวันที่</b>
+                </Form.Control.Feedback>
+                {!editingItem && (
+                  <Form.Text className="text-muted">
+                    วันที่จะถูกตั้งเป็นวันปัจจุบันอัตโนมัติ
+                  </Form.Text>
+                )}
+              </Form.Group>
 
               <Form.Group as={Col} md="6" className="mb-3">
                 <Form.Label><b>Fix ID *</b></Form.Label>
@@ -939,15 +899,7 @@ if (dateRef.current) dateRef.current.value = todayString;
           </Modal.Footer>
         </Form>
       </Modal>
-
-
-<FixlistModal
-  show={showItemDetail}
-  onHide={() => setShowItemDetail(false)}
-  fixID={selectedItemDetail.fixID}
-  customer={selectedItemDetail.customer}
-/>
-</div>  
+    </div>
   );
 }
 

@@ -60,51 +60,6 @@ function LogStock() {
     }
   };
 
-  const [sortConfig, setSortConfig] = useState({
-  key: null, // เช่น 'location', 'part_name'
-  direction: 'ascending', // or 'descending'
-});
-
-  const handleSort = (key) => {
-  let direction = 'ascending';
-  if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-    direction = 'descending';
-  }
-  setSortConfig({ key, direction });
-
-  const sortedData = [...filteredData].sort((a, b) => {
-    let aValue = a[key];
-    let bValue = b[key];
-
-    // ถ้าเป็น stock_qty ให้ใช้ fallback เป็น qty
-    if (key === 'stock_qty') {
-      aValue = a.stock_qty ?? a.qty ?? 0;
-      bValue = b.stock_qty ?? b.qty ?? 0;
-    }
-
-    // ตรวจว่าเป็นเลขหรือไม่
-    const aNum = parseFloat(aValue);
-    const bNum = parseFloat(bValue);
-
-    const bothNumbers = !isNaN(aNum) && !isNaN(bNum);
-
-    if (bothNumbers) {
-      // เทียบตัวเลข
-      return direction === 'ascending' ? aNum - bNum : bNum - aNum;
-    } else {
-      // เทียบตัวอักษร
-      const aStr = (aValue || '').toString().toLowerCase();
-      const bStr = (bValue || '').toString().toLowerCase();
-      if (aStr < bStr) return direction === 'ascending' ? -1 : 1;
-      if (aStr > bStr) return direction === 'ascending' ? 1 : -1;
-      return 0;
-    }
-  });
-
-  setFilteredData(sortedData);
-  paginate(1, sortedData);
-};
-
   const handleLocationSearch = (location) => {
     // เซ็ตค่าในช่องค้นหาเป็น Location ที่เลือก
     if (searchRef.current) {
@@ -152,20 +107,6 @@ function LogStock() {
   const handleSave = () => {
     fetchStockParts(); // โหลดข้อมูลใหม่หลังจากอัพเดท
   };
-
-  const getSortIcon = (columnKey) => {
-  if (sortConfig.key !== columnKey) {
-    return (
-      <span style={{ color: "#888" }}>△</span>
-    );
-  }
-  return sortConfig.direction === 'ascending' ? (
-    <span style={{ color: "#00e676" }}>▲</span>
-  ) : (
-    <span style={{ color: "#00e676" }}>▼</span>
-  );
-};
-
 
   const generateSuggestions = (input) => {
     if (!input || input.length < 1) {
@@ -562,82 +503,16 @@ function LogStock() {
               <div className="table-responsive">
                 <Table hover className="align-middle border table-dark" style={{ borderRadius: "8px", overflow: "hidden" }}>
                   <thead style={{ backgroundColor: "#333333" }}>
-  <tr className="text-center">
-    <th className="py-3" style={{ color: "#e0e0e0" }}>
-      <div className="d-flex justify-content-center align-items-center gap-1">
-        Location
-        <Button
-          variant="link"
-          size="sm"
-          className="p-0 text-white"
-          onClick={() => handleSort('location')}
-        >
-          {getSortIcon('location')}
-        </Button>
-      </div>
-    </th>
-
-    <th className="py-3" style={{ color: "#e0e0e0" }}>
-      <div className="d-flex justify-content-center align-items-center gap-1">
-        Part Name
-        <Button
-          variant="link"
-          size="sm"
-          className="p-0 text-white"
-          onClick={() => handleSort('part_name')}
-        >
-          {getSortIcon('part_name')}
-        </Button>
-      </div>
-    </th>
-
-    <th className="py-3" style={{ color: "#e0e0e0" }}>
-      <div className="d-flex justify-content-center align-items-center gap-1">
-        Part Number
-        <Button
-          variant="link"
-          size="sm"
-          className="p-0 text-white"
-          onClick={() => handleSort('part_num')}
-        >
-          {getSortIcon('part_num')}
-        </Button>
-      </div>
-    </th>
-
-    <th className="py-3" style={{ color: "#e0e0e0" }}>
-      <div className="d-flex justify-content-center align-items-center gap-1">
-        Stock Qty
-        <Button
-          variant="link"
-          size="sm"
-          className="p-0 text-white"
-          onClick={() => handleSort('stock_qty')}
-        >
-          {getSortIcon('stock_qty')}
-        </Button>
-      </div>
-    </th>
-
-    <th className="py-3" style={{ color: "#e0e0e0" }}>Store Name</th>
-    <th className="py-3" style={{ color: "#e0e0e0" }}>Supplier</th>
-    <th className="py-3" style={{ color: "#e0e0e0" }}>
-      <div className="d-flex justify-content-center align-items-center gap-1">
-        Date
-        <Button
-          variant="link"
-          size="sm"
-          className="p-0 text-white"
-          onClick={() => handleSort('Date')}
-        >
-          {getSortIcon('Date')}
-        </Button>
-      </div>
-    </th>
-  </tr>
-</thead>
-
-
+                    <tr className="text-center">
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Location</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Part Name</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Part Number</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Stock Qty</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Store Name</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Supplier</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Date Update</th>
+                    </tr>
+                  </thead>
 
                   <tbody>
                     {currentPageData.length === 0 ? (
