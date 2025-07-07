@@ -14,6 +14,7 @@ function ItemDetailModal({ show, onHide, partNum, locationName }) {
   const [selectedItem, setSelectedItem] = useState(null);
   const [addQty, setAddQty] = useState(1);
   const [validated, setValidated] = useState(false);
+  
   // State สำหรับ Edit Modal
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedEditItem, setSelectedEditItem] = useState(null);

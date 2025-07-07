@@ -29,6 +29,7 @@ function ReceivePart() {
   const [serials, setSerials] = useState([]);
   const [currentSerialPageData, setCurrentSerialPageData] = useState([]);
   const [currentSerialPage, setCurrentSerialPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState({ key: '', direction: 'ascending' });
 
   const itemsPerPage = 15;
 
@@ -122,6 +123,56 @@ function ReceivePart() {
     }
   };
 
+  const handleSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+
+    const sortedData = [...serials].sort((a, b) => {
+      let aValue = a[key];
+      let bValue = b[key];
+
+      // จัดการกับค่าที่เป็น null หรือ undefined
+      if (aValue == null) aValue = '';
+      if (bValue == null) bValue = '';
+
+      // กรณีพิเศษสำหรับ packsize และ quantity ที่เป็นตัวเลข
+      if (key === 'packsize' || key === 'quantity') {
+        aValue = parseFloat(aValue) || 0;
+        bValue = parseFloat(bValue) || 0;
+        return direction === 'ascending' ? aValue - bValue : bValue - aValue;
+      }
+
+      // กรณีพิเศษสำหรับ date
+      if (key === 'date') {
+        const aDate = new Date(aValue);
+        const bDate = new Date(bValue);
+        return direction === 'ascending' ? aDate - bDate : bDate - aDate;
+      }
+
+      // ตรวจสอบว่าเป็นตัวเลขหรือไม่
+      const aNum = parseFloat(aValue);
+      const bNum = parseFloat(bValue);
+      const bothNumbers = !isNaN(aNum) && !isNaN(bNum);
+
+      if (bothNumbers) {
+        return direction === 'ascending' ? aNum - bNum : bNum - aNum;
+      } else {
+        // เปรียบเทียบแบบ string
+        const aStr = aValue.toString().toLowerCase();
+        const bStr = bValue.toString().toLowerCase();
+        if (aStr < bStr) return direction === 'ascending' ? -1 : 1;
+        if (aStr > bStr) return direction === 'ascending' ? 1 : -1;
+        return 0;
+      }
+    });
+
+    setSerials(sortedData);
+    paginateSerials(1);
+  };
+
   // เพิ่มฟังก์ชันแบ่งหน้าสำหรับ serials
   const paginateSerials = (pageNumber) => {
     const startIndex = (pageNumber - 1) * itemsPerPage;
@@ -138,6 +189,20 @@ function ReceivePart() {
     const searchTerm = searchRef.current.value.toLowerCase().trim();
     searchSerials();
   };
+
+  // ฟังก์ชันสำหรับแสดงลูกศร sort
+  const getSortIcon = (columnKey) => {
+  if (sortConfig.key !== columnKey) {
+    return (
+      <span style={{ color: "#888" }}>△</span>
+    );
+  }
+  return sortConfig.direction === 'ascending' ? (
+    <span style={{ color: "#00e676" }}>▲</span>
+  ) : (
+    <span style={{ color: "#00e676" }}>▼</span>
+  );
+};
 
   useEffect(() => {
     if (userInfo) {
@@ -241,7 +306,6 @@ function ReceivePart() {
                       <Plus size={18} className="me-1" />
                     </Button>
                   </AddSerial>
-
                 </div>
               </div>
 
@@ -249,16 +313,65 @@ function ReceivePart() {
                 <Table hover className="align-middle border table-dark" style={{ borderRadius: "8px", overflow: "hidden" }}>
                   <thead style={{ backgroundColor: "#333333" }}>
                     <tr className="text-center">
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>No.</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>Serial Number</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>Part Number</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>Part Name</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>Supplier</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>Brand</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>Supplier SN barcode</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>Supplier part number barcode</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>quantity</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>Date</th>
+                      <th className="py-3" style={{ color: "#e0e0e0", cursor: "pointer" }}>
+                        <div className="d-flex justify-content-center align-items-center gap-1">
+                          No.
+                        </div>
+                      </th>
+                      <th className="py-3" style={{ color: "#e0e0e0", cursor: "pointer" }} onClick={() => handleSort('part_no')}>
+                        <div className="d-flex justify-content-center align-items-center gap-1">
+                          Serial Number
+                          <span style={{ fontSize: '12px' }}>{getSortIcon('part_no')}</span>
+                        </div>
+                      </th>
+                      <th className="py-3" style={{ color: "#e0e0e0", cursor: "pointer" }} onClick={() => handleSort('part_num')}>
+                        <div className="d-flex justify-content-center align-items-center gap-1">
+                          Part Number
+                          <span style={{ fontSize: '12px' }}>{getSortIcon('part_num')}</span>
+                        </div>
+                      </th>
+                      <th className="py-3" style={{ color: "#e0e0e0", cursor: "pointer" }} onClick={() => handleSort('part_name')}>
+                        <div className="d-flex justify-content-center align-items-center gap-1">
+                          Part Name
+                          <span style={{ fontSize: '12px' }}>{getSortIcon('part_name')}</span>
+                        </div>
+                      </th>
+                      <th className="py-3" style={{ color: "#e0e0e0", cursor: "pointer" }} onClick={() => handleSort('supplier')}>
+                        <div className="d-flex justify-content-center align-items-center gap-1">
+                          Supplier
+                          <span style={{ fontSize: '12px' }}>{getSortIcon('supplier')}</span>
+                        </div>
+                      </th>
+                      <th className="py-3" style={{ color: "#e0e0e0", cursor: "pointer" }} onClick={() => handleSort('brand')}>
+                        <div className="d-flex justify-content-center align-items-center gap-1">
+                          Brand
+                          <span style={{ fontSize: '12px' }}>{getSortIcon('brand')}</span>
+                        </div>
+                      </th>
+                      <th className="py-3" style={{ color: "#e0e0e0", cursor: "pointer" }} onClick={() => handleSort('sup_serial')}>
+                        <div className="d-flex justify-content-center align-items-center gap-1">
+                          Supplier SN barcode
+                          <span style={{ fontSize: '12px' }}>{getSortIcon('sup_serial')}</span>
+                        </div>
+                      </th>
+                      <th className="py-3" style={{ color: "#e0e0e0", cursor: "pointer" }} onClick={() => handleSort('sup_part_number')}>
+                        <div className="d-flex justify-content-center align-items-center gap-1">
+                          Supplier part number barcode
+                          <span style={{ fontSize: '12px' }}>{getSortIcon('sup_part_number')}</span>
+                        </div>
+                      </th>
+                      <th className="py-3" style={{ color: "#e0e0e0", cursor: "pointer" }} onClick={() => handleSort('packsize')}>
+                        <div className="d-flex justify-content-center align-items-center gap-1">
+                          Quantity
+                          <span style={{ fontSize: '12px' }}>{getSortIcon('packsize')}</span>
+                        </div>
+                      </th>
+                      <th className="py-3" style={{ color: "#e0e0e0", cursor: "pointer" }} onClick={() => handleSort('date')}>
+                        <div className="d-flex justify-content-center align-items-center gap-1">
+                          Date
+                          <span style={{ fontSize: '12px' }}>{getSortIcon('date')}</span>
+                        </div>
+                      </th>
                       <th className="py-3" style={{ color: "#e0e0e0" }}>Action</th>
                     </tr>
                   </thead>
@@ -266,7 +379,7 @@ function ReceivePart() {
                   {serials.length === 0 ? (
                     <tbody>
                       <tr>
-                        <td colSpan={10} className="text-center py-5" style={{ color: "#bdbdbd" }}>
+                        <td colSpan={11} className="text-center py-5" style={{ color: "#bdbdbd" }}>
                           <div className="d-flex flex-column align-items-center">
                             <UpcScan size={40} className="mb-2 text-muted" />
                             <span className="fw-medium">No Data</span>
