@@ -2420,6 +2420,7 @@ else if ($action == "addFixItem") {
 
 // ฟังก์ชันแก้ไข Fix Item
 else if ($action == "updateFixItem") {
+   
     // รับข้อมูลจาก GET parameters
     $status = isset($_GET['Status']) ? mysqli_real_escape_string($link, $_GET['Status']) : '';
     $location = isset($_GET['Location']) ? mysqli_real_escape_string($link, $_GET['Location']) : '';

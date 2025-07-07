@@ -1,29 +1,157 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, createContext, useContext } from "react";
 import { FormControl, Button, Table, Tabs, Tab, Card, Badge, Container } from "react-bootstrap";
 import PaginationComponent from "../components/PaginationComponent";
 import Swal from "sweetalert2";
-import AddUser from "../Stockpage/AddUser";
-import EditUser from "./EditUser";
-import { 
-  Search, 
-  PersonPlus, 
-  PencilSquare, 
+import AddUser from "./Adduser"; // Path อาจจะต้องปรับตามโครงสร้างโปรเจกต์ของคุณ
+import EditUser from "./EditUser"; // Path อาจจะต้องปรับตามโครงสร้างโปรเจกต์ของคุณ
+
+// นำเข้า ROLE_PERMISSIONS และ helper functions
+import { ROLE_PERMISSIONS, getPermissionCodes, getPermissionNames } from './permissions'; // <--- แก้ไขตรงนี้
+
+import {
+  Search,
+  PersonPlus,
+  PencilSquare,
   PeopleFill,
-  Building, 
+  Building,
   ArrowRepeat,
   ExclamationCircle,
-  Trash, 
-  Shield, 
-  ShieldCheck, 
+  Trash,
+  Shield,
+  ShieldCheck,
   PersonCheck,
   Envelope,
   Telephone,
   GeoAlt,
   XCircle,
-  Plus
+  Plus,
+  Eye,
+  EyeSlash,
+  Lock,
+  Unlock
 } from "react-bootstrap-icons";
 
+// AuthContext สำหรับจัดการ authentication และ permissions (ยังคงอยู่ใน AdminUser หรือแยกไปไฟล์ AuthContext.js)
+const AuthContext = createContext();
+
+// Hook สำหรับใช้ AuthContext
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
+// AuthProvider Component
+export const AuthProvider = ({ children }) => {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [userPermissions, setUserPermissions] = useState([]); // Stores permission names (e.g., 'Crm System')
+  const [loading, setLoading] = useState(true);
+
+  const hasPageAccess = (pageName) => {
+    if (!currentUser) return false;
+    
+    if (currentUser.level === 'admin') return true;
+    
+    const rolePermissions = ROLE_PERMISSIONS[currentUser.level];
+    if (!rolePermissions) return false;
+    
+    const requiredPage = rolePermissions.pages.find(page => page.name === pageName && page.required);
+    if (requiredPage) return true;
+    
+    // Check if the user has this permission name
+    return userPermissions.includes(pageName);
+  };
+
+  const login = async (userData) => {
+    try {
+      setCurrentUser(userData);
+      let permissionsAsNames = [];
+      if (userData.Roleuser) { // Use Roleuser field
+        const codes = userData.Roleuser.split(',').filter(code => code.trim() !== '');
+        permissionsAsNames = getPermissionNames(codes); // Convert codes to names
+      }
+      setUserPermissions(permissionsAsNames);
+      localStorage.setItem('currentUser', JSON.stringify(userData));
+      localStorage.setItem('userPermissions', JSON.stringify(permissionsAsNames)); // Store names
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    setUserPermissions([]);
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('userPermissions');
+  };
+
+  useEffect(() => {
+    const checkAuth = () => {
+      try {
+        const savedUser = localStorage.getItem('currentUser');
+        const savedPermissions = localStorage.getItem('userPermissions'); // These are already names
+
+        if (savedUser) {
+          const parsedUser = JSON.parse(savedUser);
+          setCurrentUser(parsedUser);
+          // If savedPermissions exists and is valid, use it. Otherwise, derive from Roleuser.
+          if (savedPermissions) {
+            setUserPermissions(JSON.parse(savedPermissions));
+          } else if (parsedUser.Roleuser) {
+            const codes = parsedUser.Roleuser.split(',').filter(code => code.trim() !== '');
+            setUserPermissions(getPermissionNames(codes));
+          } else {
+            setUserPermissions([]);
+          }
+        } else {
+          // หากไม่มีข้อมูลผู้ใช้ใน localStorage, กำหนดเป็นผู้ใช้จำลองเพื่อทดสอบ
+          // ลบส่วนนี้ออกในการใช้งานจริง และ implement ระบบ login
+          const mockUser = {
+            id: 'admin1',
+            username: 'admin',
+            fname: 'Admin',
+            lname: 'User',
+            fnameth: 'ผู้ดูแลระบบ',
+            lnameth: 'หลัก',
+            level: 'admin', // กำหนดเป็น 'admin' เพื่อให้มีสิทธิ์เต็ม
+            // Mock Roleuser with codes
+            Roleuser: '01,02,03' // Example codes for Crm System, Warehouse, Product
+          };
+          setCurrentUser(mockUser);
+          setUserPermissions(getPermissionNames(mockUser.Roleuser.split(',')));
+        }
+      } catch (error) {
+        console.error('Error loading auth data:', error);
+        logout();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  const value = {
+    currentUser,
+    userPermissions,
+    loading,
+    login,
+    logout,
+    hasPageAccess
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
 function Usertable() {
+  const { currentUser, hasPageAccess } = useAuth();
   const searchRef = useRef(null);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -40,18 +168,55 @@ function Usertable() {
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedPosition, setSelectedPosition] = useState("");
 
-  // ===== ฟังก์ชันจัดการ Users =====
-  // ดึงข้อมูล users
+    const updateUserPermissions = async (userId, newPermissionsAsNames) => {
+    try {
+      // Convert permission names back to codes for saving
+      const newPermissionsAsCodes = getPermissionCodes(newPermissionsAsNames).join(',');
+
+      const response = await fetch(`${import.meta.env.VITE_SERVER}/User.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'updateUser', // Use updateUser action to save Roleuser
+          id: userId,
+          Roleuser: newPermissionsAsCodes // Send Roleuser with codes
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        Swal.fire({
+          position: "center",
+          icon: "success",
+          title: "อัปเดตสิทธิ์สำเร็จ", // Changed message
+          showConfirmButton: false,
+          timer: 1500,
+        });
+        await getUsers(); // Refresh user list
+      } else {
+        throw new Error(data.message || 'ไม่สามารถอัปเดตสิทธิ์ได้'); // Changed message
+      }
+    } catch (error) {
+      Swal.fire({
+        position: "center",
+        icon: "error",
+        title: "เกิดข้อผิดพลาด",
+        text: error.message,
+        showConfirmButton: true,
+      });
+    }
+  };
+
   const getUsers = async () => {
     setLoading(true);
     setError(null);
-    
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_SERVER}/User.php?action=getall`,
-        {
-          method: "GET",
-        }
+        `${import.meta.env.VITE_SERVER}/User.php?action=getUsers`,
+        { method: "GET" }
       );
       const data = await res.json();
       
@@ -99,205 +264,178 @@ function Usertable() {
     }
   };
 
-  // ลบ user
- // ฟังก์ชันลบ user ที่ปรับปรุงแล้ว
-const deleteUser = async (userId) => {
-  // ตรวจสอบว่ามี userId หรือไม่
-  if (!userId) {
-    Swal.fire({
-      position: "center",
-      icon: "error",
-      title: "ไม่พบ ID ผู้ใช้",
-      text: "กรุณาลองใหม่อีกครั้ง",
-      showConfirmButton: false,
-      timer: 2000,
-    });
-    return;
-  }
-
-  // แสดงกล่องยืนยันการลบ
-  const result = await Swal.fire({
-    title: 'ยืนยันการลบ',
-    text: `คุณต้องการลบผู้ใช้ ID: ${userId} หรือไม่?`,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#e53935',
-    cancelButtonColor: '#6c757d',
-    confirmButtonText: 'ลบ',
-    cancelButtonText: 'ยกเลิก',
-    reverseButtons: true
-  });
-
-  if (result.isConfirmed) {
-    try {
-      // แสดง loading
+const deleteUser = async (id) => {
+    if (!hasPageAccess('adminuser') || currentUser?.level !== 'admin') {
       Swal.fire({
-        title: 'กำลังลบข้อมูล...',
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        showConfirmButton: false,
-        didOpen: () => {
-          Swal.showLoading();
-        }
-      });
-
-      // สร้าง URL สำหรับการลบ
-      const deleteUrl = `${import.meta.env.VITE_SERVER}/User.php`;
-      
-      console.log('กำลังลบผู้ใช้:', userId);
-      console.log('URL:', deleteUrl);
-
-      // ลองวิธีที่ 1: ใช้ POST แทน DELETE
-      const res = await fetch(deleteUrl, {
-        method: "POST",
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'delete',
-          user_id: userId
-        })
-      });
-
-      console.log('Response Status:', res.status);
-
-      // ตรวจสอบสถานะการตอบกลับ
-      if (!res.ok) {
-        throw new Error(`เซิร์ฟเวอร์ตอบกลับด้วยสถานะ: ${res.status}`);
-      }
-
-      // อ่านข้อมูลที่ได้รับ
-      const responseText = await res.text();
-      console.log('Raw Response:', responseText);
-
-      let data;
-      try {
-        // ลองแปลง JSON
-        data = responseText ? JSON.parse(responseText) : { status: "success" };
-      } catch (parseError) {
-        console.error('JSON Parse Error:', parseError);
-        throw new Error('เซิร์ฟเวอร์ส่งข้อมูลกลับมาไม่ถูกต้อง');
-      }
-
-      console.log('Parsed Response:', data);
-
-      // ตรวจสอบผลลัพธ์
-      if (data.status === "success") {
-        await Swal.fire({
-          position: "center",
-          icon: "success",
-          title: "ลบข้อมูลสำเร็จ",
-          text: "ข้อมูลผู้ใช้ถูกลบเรียบร้อยแล้ว",
-          showConfirmButton: false,
-          timer: 1500,
-        });
-        
-        // รีเฟรชข้อมูลผู้ใช้
-        await getUsers();
-        // กลับไปหน้าแรกของตาราง
-        paginateUsers(1);
-        
-      } else {
-        throw new Error(data.message || 'ไม่สามารถลบข้อมูลได้');
-      }
-
-    } catch (err) {
-      console.error('Delete Error:', err);
-      
-      // แสดงข้อผิดพลาดที่เหมาะสม
-      let errorMessage = "เกิดข้อผิดพลาดในการลบข้อมูล";
-      let errorDetail = err.message;
-      
-      if (err.message.includes('Failed to fetch')) {
-        errorMessage = "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้";
-        errorDetail = "กรุณาตรวจสอบการเชื่อมต่อเครือข่าย";
-      } else if (err.message.includes('เซิร์ฟเวอร์ตอบกลับด้วยสถานะ')) {
-        errorMessage = "เซิร์ฟเวอร์มีปัญหา";
-      }
-      
-      await Swal.fire({
         position: "center",
         icon: "error",
-        title: errorMessage,
-        text: errorDetail,
+        title: "ไม่มีสิทธิ์",
+        text: "เฉพาะ Administrator เท่านั้นที่สามารถลบผู้ใช้ได้",
         showConfirmButton: true,
-        confirmButtonText: 'ตกลง'
       });
+      return;
     }
-  }
-};
 
-// ฟังก์ชันทางเลือก: ใช้ GET method (ถ้า POST ไม่ทำงาน)
-const deleteUserAlternative = async (userId) => {
-  if (!userId) {
-    Swal.fire({
-      position: "center",
-      icon: "error",
-      title: "ไม่พบ ID ผู้ใช้",
-      showConfirmButton: false,
-      timer: 2000,
-    });
-    return;
-  }
-
-  const result = await Swal.fire({
-    title: 'ยืนยันการลบ',
-    text: `คุณต้องการลบผู้ใช้ ID: ${userId} หรือไม่?`,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#e53935',
-    cancelButtonColor: '#6c757d',
-    confirmButtonText: 'ลบ',
-    cancelButtonText: 'ยกเลิก'
-  });
-
-  if (result.isConfirmed) {
-    try {
-      // ใช้ GET method พร้อม URL encoding
-      const deleteUrl = `${import.meta.env.VITE_SERVER}/User.php?action=delete&user_id=${encodeURIComponent(userId)}`;
-      
-      const res = await fetch(deleteUrl, {
-        method: "GET",
-        headers: {
-          'Accept': 'application/json',
-        }
+    if (currentUser && currentUser.id === id) {
+      Swal.fire({
+        position: "center",
+        icon: "error",
+        title: "ไม่สามารถลบผู้ใช้นี้ได้",
+        text: "คุณไม่สามารถลบบัญชีผู้ใช้ของคุณเองได้",
+        showConfirmButton: true,
       });
+      return;
+    }
 
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
+    console.log('Attempting to delete user ID:', id);
 
-      const data = await res.json();
-      
-      if (data.status === "success") {
+    if (!id) {
+      Swal.fire({
+        position: "center",
+        icon: "error",
+        title: "ไม่พบ ID",
+        text: "กรุณาระบุ ID ที่ต้องการลบ",
+        showConfirmButton: false,
+        timer: 2000,
+      });
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: 'ยืนยันการลบ',
+      text: `คุณต้องการลบผู้ใช้ที่มี ID "${id}" หรือไม่?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#e53935',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'ลบ',
+      cancelButtonText: 'ยกเลิก'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const deleteUrl = `${import.meta.env.VITE_SERVER}/User.php`;
+        const res = await fetch(deleteUrl, {
+          method: "POST",
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'delete',
+            id: id
+          })
+        });
+
+        const responseText = await res.text();
+        let data;
+        try {
+          data = JSON.parse(responseText);
+        } catch (e) {
+          throw new Error(`Invalid JSON response: ${responseText}`);
+        }
+
+        if (data.success) {
+          Swal.fire({
+            position: "center",
+            icon: "success",
+            title: "ลบข้อมูลสำเร็จ",
+            text: data.message,
+            showConfirmButton: false,
+            timer: 1500,
+          });
+          await getUsers();
+          paginateUsers(1);
+        } else {
+          throw new Error(data.message || 'ไม่สามารถลบข้อมูลได้');
+        }
+      } catch (err) {
         Swal.fire({
           position: "center",
-          icon: "success",
-          title: "ลบข้อมูลสำเร็จ",
-          showConfirmButton: false,
-          timer: 1500,
+          icon: "error",
+          title: "เกิดข้อผิดพลาดในการลบข้อมูล",
+          text: err.message,
+          showConfirmButton: true,
         });
-        await getUsers();
-        paginateUsers(1);
-      } else {
-        throw new Error(data.message || 'ไม่สามารถลบข้อมูลได้');
       }
-    } catch (err) {
-      console.error('Delete user error:', err);
-      Swal.fire({
-        position: "center",
-        icon: "error",
-        title: "เกิดข้อผิดพลาดในการลบข้อมูล",
-        text: err.message,
-        showConfirmButton: true,
-      });
     }
-  }
-};
+  };
 
-  // ===== ฟังก์ชันแบ่งหน้า =====
-  // แบ่งหน้าสำหรับข้อมูล users
+  // ฟังก์ชันแสดงและแก้ไข permissions ของ user (ปรับแก้ให้ใช้ Roleuser)
+  const showUserPermissions = (user) => {
+    let permissionsAsNames = [];
+    if (user.Roleuser) {
+      const codes = user.Roleuser.split(',').filter(code => code.trim() !== '');
+      permissionsAsNames = getPermissionNames(codes); // Convert codes to names
+    }
+
+    const roleInfo = ROLE_PERMISSIONS[user.level] || ROLE_PERMISSIONS.user;
+
+    const permissionsHTML = roleInfo.pages.map(page => {
+      const isRequired = page.required;
+      const isAllowed = permissionsAsNames.includes(page.name) || isRequired; // Check against names
+      const checkboxId = `perm-${page.name}`;
+      
+      return `
+        <div style="display: flex; align-items: center; padding: 8px; margin: 4px 0; background: ${isAllowed ? '#e8f5e8' : '#f5f5f5'}; border-radius: 6px; border: 1px solid ${isAllowed ? '#4caf50' : '#ddd'};">
+          <input type="checkbox" 
+                 id="${checkboxId}" 
+                 ${isAllowed ? 'checked' : ''} 
+                 ${isRequired ? 'disabled' : ''}
+                 style="margin-right: 10px; transform: scale(1.2);" />
+          <label for="${checkboxId}" style="flex: 1; cursor: ${isRequired ? 'not-allowed' : 'pointer'}; color: ${isRequired ? '#666' : '#333'};">
+            <strong>${page.label}</strong>
+            ${isRequired ? '<span style="color: #d32f2f; font-size: 12px;"> (จำเป็น)</span>' : ''}
+          </label>
+          <span style="color: ${isAllowed ? '#2e7d32' : '#666'}; font-size: 18px;">
+            ${isAllowed ? '✓' : '✗'}
+          </span>
+        </div>
+      `;
+    }).join('');
+
+    Swal.fire({
+      title: `<strong>จัดการสิทธิ์: ${user.fnameth || user.fname} ${user.lnameth || user.lname}</strong>`,
+      html: `
+        <div style="text-align: left;">
+          <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; color: #333;">
+            <strong>ตำแหน่ง:</strong> ${roleInfo.label}<br>
+            <small style="color: #666;">${roleInfo.description}</small>
+          </div>
+          <div style="margin-bottom: 15px; color: #333;">
+            <strong>สิทธิ์การเข้าถึงหน้าเว็บ:</strong>
+          </div>
+          <div id="permissions-list">
+            ${permissionsHTML}
+          </div>
+          <div style="font-size: 12px; color: #666; border-top: 1px solid #eee; padding-top: 15px; margin-top: 15px;">
+            <strong>หมายเหตุ:</strong> หน้าที่มีป้าย "จำเป็น" จะไม่สามารถยกเลิกได้
+          </div>
+        </div>
+      `,
+      width: '600px',
+      showCancelButton: true,
+      confirmButtonText: 'บันทึกการเปลี่ยนแปลง',
+      cancelButtonText: 'ปิด',
+      confirmButtonColor: '#00c853',
+      cancelButtonColor: '#6c757d',
+      preConfirm: () => {
+        const newPermissions = []; // This will store permission names
+        roleInfo.pages.forEach(page => {
+          const checkbox = document.getElementById(`perm-${page.name}`);
+          if (checkbox && (checkbox.checked || page.required)) {
+            newPermissions.push(page.name);
+          }
+        });
+        return newPermissions;
+      }
+    }).then((result) => {
+      if (result.isConfirmed && result.value) {
+        updateUserPermissions(user.id, result.value); // Pass names to update function
+      }
+    });
+  };
+
   const paginateUsers = (pageNumber) => {
     const startIndex = (pageNumber - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
@@ -328,35 +466,22 @@ const deleteUserAlternative = async (userId) => {
     }
   };
 
-  // Get unique values for filter dropdowns
-  const departments = [...new Set(users.map(user => user.department).filter(Boolean))];
-  const positions = [...new Set(users.map(user => user.position).filter(Boolean))];
-  const levels = [...new Set(users.map(user => user.level).filter(Boolean))];
-
-  // Get level badge color and icon
-  const getLevelBadgeColor = (level) => {
-    const colors = {
-      admin: "#e53935",
-      manager: "#8e24aa", 
-      supervisor: "#1e88e5",
-      staff: "#00c853",
-      user: "#757575"
-    };
-    return colors[level?.toLowerCase()] || colors.user;
+const getLevelBadgeColor = (level) => {
+    return ROLE_PERMISSIONS[level?.toLowerCase()]?.color || "#757575";
   };
 
   const getLevelIcon = (level) => {
-    switch(level?.toLowerCase()) {
+    switch (level?.toLowerCase()) {
       case 'admin': return <Shield size={14} />;
-      case 'manager': return <ShieldCheck size={14} />; 
+      case 'user': return <ShieldCheck size={14} />;
       default: return <PersonCheck size={14} />;
     }
   };
 
-  // Get status badge color
   const getStatusBadgeColor = (status) => {
     const colors = {
       active: "#00c853",
+      activation: "#fb8c00",
       inactive: "#757575",
       pending: "#fb8c00",
       suspended: "#e53935"
@@ -366,7 +491,7 @@ const deleteUserAlternative = async (userId) => {
 
   if (loading) {
     return (
-      <div className="min-vh-100 d-flex align-items-center justify-content-center" style={{ 
+      <div className="min-vh-100 d-flex align-items-center justify-content-center" style={{
         fontFamily: "'Inter', 'Prompt', sans-serif",
         backgroundColor: "#1a1a1a",
         color: "#e0e0e0"
@@ -408,16 +533,15 @@ const deleteUserAlternative = async (userId) => {
   }
 
   return (
-    <div className="min-vh-100" style={{ 
-        fontFamily: "'Inter', 'Prompt', sans-serif",
-        backgroundColor: "#1a1a1a",
-        color: "#e0e0e0"
-      }}>
-      {/* ส่วนแท็บการจัดการ */}
+    <div className="min-vh-100" style={{
+      fontFamily: "'Inter', 'Prompt', sans-serif",
+      backgroundColor: "#1a1a1a",
+      color: "#e0e0e0"
+    }}>
       <Tabs
         activeKey="users"
         className="mb-0 nav-fill"
-        style={{ 
+        style={{
           backgroundColor: "#2a2a2a",
           borderBottom: "1px solid #333333",
           boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
@@ -501,96 +625,33 @@ const deleteUserAlternative = async (userId) => {
                   >
                     <XCircle size={18} className="me-1" /> Clear
                   </Button>
-                  <AddUser onSave={handleSave}>
-                                      <Button
-                                        variant="success"
-                                        style={{ 
-                                          borderRadius: "6px",
-                                          backgroundColor: "#007e33",
-                                          borderColor: "#007e33"
-                                        }}
-                                      >
-                                        <Plus size={18} className="me-1" />
-                                      </Button>
-                                    </AddUser>
+                  {hasPageAccess('adminuser') && (
+                    <AddUser onSave={handleSave}>
+                      <Button
+                        variant="success"
+                        style={{
+                          borderRadius: "6px",
+                          backgroundColor: "#007e33",
+                          borderColor: "#007e33"
+                        }}
+                      >
+                        <Plus size={18} className="me-1" /> Add User
+                      </Button>
+                    </AddUser>
+                  )}
                 </div>
               </div>
 
-              {/* ส่วนกรองข้อมูล */}
-              <div className="row mb-4">
-                <div className="col-md-3">
-                  <FormControl
-                    as="select"
-                    style={{ 
-                      backgroundColor: "#333333",
-                      color: "#e0e0e0",
-                      border: "1px solid #444444",
-                      borderRadius: "6px"
-                    }}
-                    value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value)}
-                  >
-                    <option value="">สถานะทั้งหมด</option>
-                    <option value="active">ใช้งาน</option>
-                    <option value="inactive">ไม่ใช้งาน</option>
-                    <option value="pending">รอการอนุมัติ</option>
-                  </FormControl>
+              {currentUser && (
+                <div className="mb-3 p-3 rounded" style={{ backgroundColor: "#333333" }}>
+                  <small style={{ color: "#bdbdbd" }}>
+                    เข้าสู่ระบบในฐานะ: <strong style={{ color: "#00c853" }}>
+                      {currentUser.fnameth || currentUser.fname} {currentUser.lnameth || currentUser.lname}
+                    </strong> 
+                    ({ROLE_PERMISSIONS[currentUser.level]?.label || currentUser.level})
+                  </small>
                 </div>
-                <div className="col-md-3">
-                  <FormControl
-                    as="select"
-                    style={{ 
-                      backgroundColor: "#333333",
-                      color: "#e0e0e0",
-                      border: "1px solid #444444",
-                      borderRadius: "6px"
-                    }}
-                    value={selectedLevel}
-                    onChange={(e) => setSelectedLevel(e.target.value)}
-                  >
-                    <option value="">ระดับทั้งหมด</option>
-                    {levels.map(level => (
-                      <option key={level} value={level}>{level}</option>
-                    ))}
-                  </FormControl>
-                </div>
-                <div className="col-md-3">
-                  <FormControl
-                    as="select"
-                    style={{ 
-                      backgroundColor: "#333333",
-                      color: "#e0e0e0",
-                      border: "1px solid #444444",
-                      borderRadius: "6px"
-                    }}
-                    value={selectedDepartment}
-                    onChange={(e) => setSelectedDepartment(e.target.value)}
-                  >
-                    <option value="">แผนกทั้งหมด</option>
-                    {departments.map(dept => (
-                      <option key={dept} value={dept}>{dept}</option>
-                    ))}
-                  </FormControl>
-                </div>
-                <div className="col-md-3">
-                  <FormControl
-                    as="select"
-                    style={{ 
-                      backgroundColor: "#333333",
-                      color: "#e0e0e0",
-                      border: "1px solid #444444",
-                      borderRadius: "6px"
-                    }}
-                    value={selectedPosition}
-                    onChange={(e) => setSelectedPosition(e.target.value)}
-                  >
-                    <option value="">ตำแหน่งทั้งหมด</option>
-                    {positions.map(pos => (
-                      <option key={pos} value={pos}>{pos}</option>
-                    ))}
-                  </FormControl>
-                </div>
-              </div>
+              )}
               
               <div className="table-responsive">
                 <Table hover className="align-middle border table-dark" style={{ borderRadius: "8px", overflow: "hidden" }}>
@@ -598,12 +659,11 @@ const deleteUserAlternative = async (userId) => {
                     <tr className="text-center">
                       <th className="py-3" style={{ color: "#e0e0e0" }}>No.</th>
                       <th className="py-3" style={{ color: "#e0e0e0" }}>ผู้ใช้</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>ข้อมูลติดต่อ</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>แผนก/ตำแหน่ง</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>ระดับ</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>สถานะ</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>เขต</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>Action</th>
+                      <th className="py-3 d-none d-md-table-cell" style={{ color: "#e0e0e0" }}>ข้อมูลติดต่อ</th>
+                      <th className="py-3 d-none d-lg-table-cell" style={{ color: "#e0e0e0" }}>แผนก/ตำแหน่ง</th>
+                      <th className="py-3 d-none d-sm-table-cell" style={{ color: "#e0e0e0" }}>ระดับ</th>
+                      <th className="py-3 d-none d-xl-table-cell" style={{ color: "#e0e0e0" }}>Permissions</th>
+                      <th className="py-3 d-none d-lg-table-cell" style={{ color: "#e0e0e0" }}>Action</th>
                     </tr>
                   </thead>
 
@@ -621,146 +681,252 @@ const deleteUserAlternative = async (userId) => {
                   ) : (
                     <tbody>
                       {currentUserPageData.map((user, index) => (
-                        <tr key={user.user_id || index} className="text-center">
-                          <td>{(currentUserPage - 1) * itemsPerPage + index + 1}</td>
-                          <td className="text-start">
-                            <div className="d-flex align-items-center">
-                              <div 
-                                className="rounded-circle d-flex align-items-center justify-content-center me-3"
-                                style={{ 
-                                  width: "40px", 
-                                  height: "40px", 
-                                  backgroundColor: "#00c853",
-                                  color: "white",
-                                  fontSize: "14px",
-                                  fontWeight: "bold"
-                                }}
-                              >
-                                {user.fnameth ? user.fnameth.charAt(0).toUpperCase() : 
-                                 user.fname ? user.fname.charAt(0).toUpperCase() : 'U'}
-                              </div>
-                              <div>
-                                <div className="fw-medium text-white">
-                                  {user.fnameth && user.lnameth 
-                                    ? `${user.fnameth} ${user.lnameth}`
-                                    : user.fname && user.lname 
-                                      ? `${user.fname} ${user.lname}`
-                                      : 'ไม่ระบุชื่อ'
-                                  }
+                        <React.Fragment key={user.id ? `id-${user.id}` : `temp-${index}`}>
+                          <tr className="text-center">
+                            <td>{(currentUserPage - 1) * itemsPerPage + index + 1}</td>
+                            <td className="text-start">
+                              <div className="d-flex align-items-center">
+                                <div
+                                  className="rounded-circle d-flex align-items-center justify-content-center me-2 me-md-3"
+                                  style={{
+                                    width: "35px",
+                                    height: "35px",
+                                    backgroundColor: getLevelBadgeColor(user.level),
+                                    color: "white",
+                                    fontSize: "12px",
+                                    fontWeight: "bold"
+                                  }}
+                                >
+                                  {user.fnameth ? user.fnameth.charAt(0).toUpperCase() :
+                                    user.fname ? user.fname.charAt(0).toUpperCase() : 'U'}
                                 </div>
-                                {(user.fname && user.lname) && (
+                                <div className="flex-grow-1">
+                                  <div className="fw-medium text-white" style={{ fontSize: "14px" }}>
+                                    {user.fnameth && user.lnameth
+                                      ? `${user.fnameth} ${user.lnameth}`
+                                      : user.fname && user.lname
+                                        ? `${user.fname} ${user.lname}`
+                                        : 'ไม่ระบุชื่อ'
+                                    }
+                                  </div>
+                                  {(user.fname && user.lname) && (
+                                    <div className="small d-none d-md-block" style={{ color: "#bdbdbd" }}>
+                                      {user.fname} {user.lname}
+                                    </div>
+                                  )}
                                   <div className="small" style={{ color: "#bdbdbd" }}>
-                                    {user.fname} {user.lname}
+                                    @{user.username}
+                                  </div>
+                                  
+                                  {/* Mobile info - แสดงข้อมูลสำคัญในหน้าจอเล็ก */}
+                                  <div className="d-md-none mt-2">
+                                    <div className="d-flex flex-wrap gap-2 mb-2">
+                                      {user.level && (
+                                        <Badge
+                                          style={{
+                                            backgroundColor: getLevelBadgeColor(user.level),
+                                            color: "white",
+                                            padding: "4px 6px",
+                                            borderRadius: "3px",
+                                            fontSize: "10px",
+                                            fontWeight: "normal"
+                                          }}
+                                        >
+                                          <span className="d-flex align-items-center">
+                                            {getLevelIcon(user.level)}
+                                            <span className="ms-1">{ROLE_PERMISSIONS[user.level]?.label || user.level}</span>
+                                          </span>
+                                        </Badge>
+                                      )}
+                                      
+                                    </div>
+                                    
+                                    {/* Mobile contact info */}
+                                    <div style={{ fontSize: "11px" }}>
+                                      {user.email && (
+                                        <div className="d-flex align-items-center mb-1">
+                                          <Envelope size={12} className="me-2" style={{ color: "#bdbdbd" }} />
+                                          <span className="text-truncate" style={{ maxWidth: "150px" }}>{user.email}</span>
+                                        </div>
+                                      )}
+                                      {user.tel && (
+                                        <div className="d-flex align-items-center mb-1">
+                                          <Telephone size={12} className="me-2" style={{ color: "#bdbdbd" }} />
+                                          <span>{user.tel}</span>
+                                        </div>
+                                      )}
+                                      {user.department && (
+                                        <div className="d-flex align-items-center mb-1">
+                                          <Building size={12} className="me-2" style={{ color: "#bdbdbd" }} />
+                                          <span className="text-truncate" style={{ maxWidth: "120px" }}>{user.department}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="text-start d-none d-md-table-cell">
+                              <div style={{ fontSize: "13px" }}>
+                                {user.email && (
+                                  <div className="d-flex align-items-center mb-1">
+                                    <Envelope size={14} className="me-2" style={{ color: "#bdbdbd" }} />
+                                    <span className="text-truncate" style={{ maxWidth: "180px" }}>{user.email}</span>
+                                  </div>
+                                )}
+                                {user.tel && (
+                                  <div className="d-flex align-items-center">
+                                    <Telephone size={14} className="me-2" style={{ color: "#bdbdbd" }} />
+                                    <span>{user.tel}</span>
                                   </div>
                                 )}
                               </div>
-                            </div>
-                          </td>
-                          <td className="text-start">
-                            <div style={{ fontSize: "13px" }}>
-                              {user.email && (
-                                <div className="d-flex align-items-center mb-1">
-                                  <Envelope size={14} className="me-2" style={{ color: "#bdbdbd" }} />
-                                  <span>{user.email}</span>
-                                </div>
-                              )}
-                              {user.tel && (
-                                <div className="d-flex align-items-center">
-                                  <Telephone size={14} className="me-2" style={{ color: "#bdbdbd" }} />
-                                  <span>{user.tel}</span>
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td className="text-start">
-                            <div style={{ fontSize: "13px" }}>
-                              {user.department && (
-                                <div className="d-flex align-items-center mb-1">
-                                  <Building size={14} className="me-2" style={{ color: "#bdbdbd" }} />
-                                  <span className="fw-medium">{user.department}</span>
-                                </div>
-                              )}
-                              {user.position && (
-                                <div style={{ color: "#bdbdbd", paddingLeft: "20px" }}>
-                                  {user.position}
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td>
-                            {user.level && (
-                              <Badge 
-                                style={{ 
-                                  backgroundColor: getLevelBadgeColor(user.level),
-                                  color: "white",
-                                  padding: "6px 10px",
-                                  borderRadius: "4px",
-                                  fontSize: "12px",
-                                  fontWeight: "normal"
-                                }}
-                              >
-                                <span className="d-flex align-items-center">
-                                  {getLevelIcon(user.level)}
-                                  <span className="ms-1">{user.level}</span>
-                                </span>
-                              </Badge>
-                            )}
-                          </td>
-                          <td>
-                            {user.status && (
-                              <Badge 
-                                style={{ 
-                                  backgroundColor: getStatusBadgeColor(user.status),
-                                  color: "white",
-                                  padding: "5px 8px",
-                                  borderRadius: "4px",
-                                  fontSize: "11px"
-                                }}
-                              >
-                                {user.status === 'active' ? 'ใช้งาน' : 
-                                 user.status === 'inactive' ? 'ไม่ใช้งาน' : 
-                                 user.status === 'pending' ? 'รอการอนุมัติ' : user.status}
-                              </Badge>
-                            )}
-                          </td>
-                          <td>
-                            {user.zone && (
-                              <div className="d-flex align-items-center justify-content-center" style={{ fontSize: "13px", color: "#bdbdbd" }}>
-                                <GeoAlt size={14} className="me-1" />
-                                {user.zone}
+                            </td>
+                            <td className="text-start d-none d-lg-table-cell">
+                              <div style={{ fontSize: "13px" }}>
+                                {user.department && (
+                                  <div className="d-flex align-items-center mb-1">
+                                    <Building size={14} className="me-2" style={{ color: "#bdbdbd" }} />
+                                    <span className="fw-medium">{user.department}</span>
+                                  </div>
+                                )}
+                                {user.position && (
+                                  <div style={{ color: "#bdbdbd", paddingLeft: "20px" }}>
+                                    {user.position}
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </td>
-                          <td>
-                            <div className="d-flex justify-content-center gap-1">
-                              <EditUser user={user} onSave={handleSave}>
-  <Button
-    variant="warning"
-    size="sm"
-    style={{
-      borderRadius: "6px",
-      backgroundColor: "#fb8c00",
-      borderColor: "#fb8c00"
-    }}
-  >
-    <PencilSquare size={16} />
-  </Button>
-</EditUser>
+                            </td>
+                            <td className="d-none d-sm-table-cell">
+                              {user.level && (
+                                <Badge
+                                  style={{
+                                    backgroundColor: getLevelBadgeColor(user.level),
+                                    color: "white",
+                                    padding: "6px 10px",
+                                    borderRadius: "4px",
+                                    fontSize: "12px",
+                                    fontWeight: "normal"
+                                  }}
+                                >
+                                  <span className="d-flex align-items-center">
+                                    {getLevelIcon(user.level)}
+                                    <span className="ms-1">{ROLE_PERMISSIONS[user.level]?.label || user.level}</span>
+                                  </span>
+                                </Badge>
+                              )}
+                            </td>
+                            
+                            <td className="d-none d-xl-table-cell">
                               <Button
-                                variant="danger"
+                                variant="info"
                                 size="sm"
-                                style={{ 
+                                style={{
                                   borderRadius: "6px",
-                                  backgroundColor: "#e53935",
-                                  borderColor: "#e53935"
+                                  backgroundColor: "#17a2b8",
+                                  borderColor: "#17a2b8"
                                 }}
-                                onClick={() => deleteUser(user.user_id)}
+                                onClick={() => showUserPermissions(user)}
+                                title="จัดการสิทธิ์การเข้าถึง"
                               >
-                                <Trash size={16} />
+                                <Eye size={16} />
                               </Button>
-                            </div>
-                          </td>
-                        </tr>
+                            </td>
+                            <td className="d-none d-lg-table-cell">
+                              <div className="d-flex justify-content-center gap-1">
+                                {(hasPageAccess('adminuser') || currentUser?.id === user.id) && (
+                                  <EditUser user={user} onSave={handleSave}>
+                                    <Button
+                                      variant="warning"
+                                      size="sm"
+                                      style={{
+                                        borderRadius: "6px",
+                                        backgroundColor: "#fb8c00",
+                                        borderColor: "#fb8c00"
+                                      }}
+                                      title="แก้ไขข้อมูลผู้ใช้"
+                                    >
+                                      <PencilSquare size={16} />
+                                    </Button>
+                                  </EditUser>
+                                )}
+                                {(currentUser?.level === 'admin' && currentUser?.id !== user.id) && (
+                                  <Button
+                                    variant="danger"
+                                    size="sm"
+                                    style={{
+                                      borderRadius: "6px",
+                                      backgroundColor: "#e53935",
+                                      borderColor: "#e53935"
+                                    }}
+                                    onClick={() => deleteUser(user.id)}
+                                    title="ลบผู้ใช้"
+                                  >
+                                    <Trash size={16} />
+                                  </Button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                          
+                          {/* Mobile action buttons - แสดงเฉพาะในหน้าจอเล็ก */}
+                          <tr className="d-lg-none">
+                            <td colSpan={8} className="py-2" style={{ backgroundColor: "#2a2a2a", borderTop: "1px solid #444" }}>
+                              <div className="d-flex justify-content-center gap-2 flex-wrap">
+                                <Button
+                                  variant="info"
+                                  size="sm"
+                                  style={{
+                                    borderRadius: "6px",
+                                    backgroundColor: "#17a2b8",
+                                    borderColor: "#17a2b8",
+                                    minWidth: "80px"
+                                  }}
+                                  onClick={() => showUserPermissions(user)}
+                                  title="จัดการสิทธิ์การเข้าถึง"
+                                >
+                                  <Eye size={14} className="me-1" />
+                                  <span className="d-none d-sm-inline">สิทธิ์</span>
+                                </Button>
+                                {(hasPageAccess('adminuser') || currentUser?.id === user.id) && (
+                                  <EditUser user={user} onSave={handleSave}>
+                                    <Button
+                                      variant="warning"
+                                      size="sm"
+                                      style={{
+                                        borderRadius: "6px",
+                                        backgroundColor: "#fb8c00",
+                                        borderColor: "#fb8c00",
+                                        minWidth: "80px"
+                                      }}
+                                      title="แก้ไขข้อมูลผู้ใช้"
+                                    >
+                                      <PencilSquare size={14} className="me-1" />
+                                      <span className="d-none d-sm-inline">แก้ไข</span>
+                                    </Button>
+                                  </EditUser>
+                                )}
+                                {(currentUser?.level === 'admin' && currentUser?.id !== user.id) && (
+                                  <Button
+                                    variant="danger"
+                                    size="sm"
+                                    style={{
+                                      borderRadius: "6px",
+                                      backgroundColor: "#e53935",
+                                      borderColor: "#e53935",
+                                      minWidth: "80px"
+                                    }}
+                                    onClick={() => deleteUser(user.id)}
+                                    title="ลบผู้ใช้"
+                                  >
+                                    <Trash size={14} className="me-1" />
+                                    <span className="d-none d-sm-inline">ลบ</span>
+                                  </Button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        </React.Fragment>
                       ))}
                     </tbody>
                   )}
@@ -783,4 +949,14 @@ const deleteUserAlternative = async (userId) => {
   );
 }
 
-export default Usertable;
+export const withAuth = (Component) => {
+  return function AuthenticatedComponent(props) {
+    return (
+      <AuthProvider>
+        <Component {...props} />
+      </AuthProvider>
+    );
+  };
+};
+
+export default withAuth(Usertable);
