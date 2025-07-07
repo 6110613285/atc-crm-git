@@ -14,6 +14,8 @@ function ProductList() {
   const [groupedProducts, setGroupedProducts] = useState([]);
   const [currentProductPageData, setCurrentProductPageData] = useState([]);
   const [currentProductPage, setCurrentProductPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
+
   
   // สำหรับ Modal รายละเอียด
   const [showProductDetail, setShowProductDetail] = useState(false);
@@ -30,7 +32,7 @@ function ProductList() {
   const itemsPerPage = 15;
 
   // สถานะทั้งหมดที่รองรับ
-  const statusTypes = ['OK', 'NG', 'พร้อมขาย', 'รอลงwindow', 'ขายแล้ว', 'Demo', 'ซ่อม', 'ยืม'];
+  const statusTypes = ['OK', 'NG', 'พร้อมขาย', 'รอลงwindow', 'ขายแล้ว', 'Demo', 'ซ่อม', 'ยืม' ,'borrow', 'out'];
   
   // ฟังก์ชันดึงข้อมูลสินค้าทั้งหมด
   const getProducts = async () => {
@@ -53,6 +55,16 @@ function ProductList() {
       setGroupedProducts([]);
     }
   };
+
+  const updateProductInList = (updatedProduct) => {
+  setProducts(prev =>
+    prev.map(item =>
+      item.AT_SN === updatedProduct.original_AT_SN
+        ? { ...item, ...updatedProduct }
+        : item
+    )
+  );
+};
 
   // ฟังก์ชันจัดกลุ่มสินค้าตาม AT Model, ขนาดจอ และ Location
   const groupProductsByModel = (productList) => {
@@ -79,6 +91,8 @@ function ProductList() {
             'Demo': 0,
             'ซ่อม': 0,
             'ยืม': 0,
+            'borrow': 0,
+            'out': 0,
             'Other': 0
           },
           latest_date: product.Datein,
@@ -98,10 +112,13 @@ function ProductList() {
       }
       
       // เก็บวันที่ล่าสุด
-      if (new Date(product.Datein) > new Date(acc[key].latest_date)) {
-        acc[key].latest_date = product.Datein;
-      }
-      
+      const latestDate = [product.Datein, product.Dateout]
+  .filter(date => date) // กรองเอาเฉพาะที่มีค่า
+  .sort((a, b) => new Date(b) - new Date(a))[0]; // เรียงจากใหม่ไปเก่า เอาตัวแรก
+
+if (new Date(latestDate) > new Date(acc[key].latest_date)) {
+  acc[key].latest_date = latestDate;
+}
       acc[key].items.push(product);
       return acc;
     }, {});
@@ -173,6 +190,48 @@ function ProductList() {
     }
   };
 
+   const getSortIcon = (columnKey) => {
+  if (sortConfig.key !== columnKey) {
+    return (
+      <span style={{ color: "#888" }}>△</span>
+    );
+  }
+  return sortConfig.direction === 'ascending' ? (
+    <span style={{ color: "#00e676" }}>▲</span>
+  ) : (
+    <span style={{ color: "#00e676" }}>▼</span>
+  );
+};
+
+  const sortGroupedProducts = (key) => {
+  let direction = 'ascending';
+  if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+    direction = 'descending';
+  }
+
+  const sorted = [...groupedProducts].sort((a, b) => {
+    if (a[key] === null) return 1;
+    if (b[key] === null) return -1;
+
+    if (typeof a[key] === 'string') {
+      return direction === 'ascending' 
+        ? a[key].localeCompare(b[key]) 
+        : b[key].localeCompare(a[key]);
+    } else if (typeof a[key] === 'number') {
+      return direction === 'ascending' ? a[key] - b[key] : b[key] - a[key];
+    } else {
+      // กรณีอื่น ๆ เช่นวันที่
+      return direction === 'ascending' 
+        ? new Date(a[key]) - new Date(b[key]) 
+        : new Date(b[key]) - new Date(a[key]);
+    }
+  });
+
+  setSortConfig({ key, direction });
+  setGroupedProducts(sorted);
+  paginateProducts(1, sorted);
+};
+
   // ฟังก์ชันแบ่งหน้าสำหรับข้อมูลที่จัดกลุ่มแล้ว
   const paginateProducts = (pageNumber, data = groupedProducts) => {
     const startIndex = (pageNumber - 1) * itemsPerPage;
@@ -221,7 +280,10 @@ function ProductList() {
         return { ...baseStyle, backgroundColor: '#e83e8c', color: '#fff' };
       case 'ยืม':
         return { ...baseStyle, backgroundColor: '#20c997', color: '#fff' };
-      default:
+      case 'borrow':
+        return { ...baseStyle, backgroundColor: '#17a2b8', color: '#fff' }; 
+      case 'out':
+        return { ...baseStyle, backgroundColor: '#6610f2', color: '#fff' };
         return { ...baseStyle, backgroundColor: '#6c757d', color: '#fff' };
     }
   };
@@ -414,17 +476,52 @@ function ProductList() {
 
               <div className="table-responsive">
                 <Table hover className="align-middle border table-dark" style={{ borderRadius: "8px", overflow: "hidden" }}>
-                  <thead style={{ backgroundColor: "#333333" }}>
-                    <tr className="text-center">
-                      <th className="py-3" style={{ color: "#e0e0e0", width: "20%" }}>AT Model</th>
-                      <th className="py-3" style={{ color: "#e0e0e0", width: "10%" }}>Display Size</th>
-                      <th className="py-3" style={{ color: "#e0e0e0", width: "12%" }}>Location</th>
-                      <th className="py-3" style={{ color: "#e0e0e0", width: "8%" }}>Total Qty</th>
-                      <th className="py-3" style={{ color: "#e0e0e0", width: "35%" }}>Status Summary</th>
-                      <th className="py-3" style={{ color: "#e0e0e0", width: "15%" }}>Latest Update</th>
-                    </tr>
-                  </thead>
-
+                    <thead style={{ backgroundColor: "#333333" }}>
+      <tr className="text-center">
+        <th
+          className="py-3"
+          style={{ color: "#e0e0e0", width: "20%", cursor: "pointer" }}
+          onClick={() => sortGroupedProducts('at_model')}
+        >
+          AT Model {getSortIcon('at_model')}
+        </th>
+        <th
+          className="py-3"
+          style={{ color: "#e0e0e0", width: "10%", cursor: "pointer" }}
+          onClick={() => sortGroupedProducts('display_size')}
+        >
+          Display Size {getSortIcon('display_size')}
+        </th>
+        <th
+          className="py-3"
+          style={{ color: "#e0e0e0", width: "12%", cursor: "pointer" }}
+          onClick={() => sortGroupedProducts('location')}
+        >
+          Location {getSortIcon('location')}
+        </th>
+        <th
+          className="py-3"
+          style={{ color: "#e0e0e0", width: "8%", cursor: "pointer" }}
+          onClick={() => sortGroupedProducts('total_qty')}
+        >
+          Total Qty {getSortIcon('total_qty')}
+        </th>
+        <th
+          className="py-3"
+          style={{ color: "#e0e0e0", width: "35%", cursor: "pointer" }}
+          onClick={() => sortGroupedProducts('status_summary')}
+        >
+          Status Summary
+        </th>
+        <th
+          className="py-3"
+          style={{ color: "#e0e0e0", width: "15%", cursor: "pointer" }}
+          onClick={() => sortGroupedProducts('latest_date')}
+        >
+          Latest Update {getSortIcon('latest_date')}
+        </th>
+      </tr>
+    </thead>
                   <tbody>
                     {currentProductPageData.length === 0 ? (
                       <tr>
@@ -506,7 +603,8 @@ function ProductList() {
         displaySize={selectedProductDetail.displaySize}
         location={selectedProductDetail.location}
         products={products}
-        onSelectForSale={handleSelectProductForSale} // เพิ่ม prop นี้
+        onSelectForSale={handleSelectProductForSale}
+        updateProductInList={updateProductInList} // เพิ่ม prop นี้
       />
 
       {/* Modal ขายสินค้า */}
