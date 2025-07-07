@@ -38,15 +38,15 @@ const LoginPage = () => {
           localStorage.setItem("token", data.data.token);
           localStorage.setItem("fullname", data.data.fullname);
           localStorage.setItem("level", data.data.level);
-          localStorage.setItem("id", data.data.user_id);
-          /* 
+          localStorage.setItem("Roleuser" , data.data.Roleuser);
+          /* localStorage.setItem("id", data.data.user_id);
           localStorage.setItem("tel", data.data.tel);
           localStorage.setItem("email", data.data.email);
           localStorage.setItem("status", data.data.status); */
           //localStorage.setItem("fullnameth", data.data.fullnameth);
           //localStorage.setItem("department", data.data.department);
           //localStorage.setItem("position", data.data.position);
-          //console.log(localStorage);
+          console.log(localStorage);
 
           window.location = "/ERP/Selectpage";
           //window.location = "/Home";
