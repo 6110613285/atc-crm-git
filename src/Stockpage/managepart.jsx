@@ -26,10 +26,6 @@ function ManageSerialPage() {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
-  const [sortConfig, setSortConfig] = useState({
-  key: null,
-  direction: 'ascending'
-});
 
   // สถานะสำหรับการแบ่งหน้า
   const [currentPartPageData, setCurrentPartPageData] = useState([]);
@@ -57,19 +53,6 @@ function ManageSerialPage() {
       setParts([]);
     }
   };
-
-  const getSortIcon = (columnKey) => {
-  if (sortConfig.key !== columnKey) {
-    return (
-      <span style={{ color: "#888" }}>△</span>
-    );
-  }
-  return sortConfig.direction === 'ascending' ? (
-    <span style={{ color: "#00e676" }}>▲</span>
-  ) : (
-    <span style={{ color: "#00e676" }}>▼</span>
-  );
-};
 
   // สร้าง suggestions
   const generateSuggestions = (input) => {
@@ -213,30 +196,6 @@ function ManageSerialPage() {
         break;
     }
   };
-
-  const handleSort = (columnKey) => {
-  let direction = 'ascending';
-  if (sortConfig.key === columnKey && sortConfig.direction === 'ascending') {
-    direction = 'descending';
-  }
-
-  setSortConfig({ key: columnKey, direction });
-
-  const sortedParts = [...parts].sort((a, b) => {
-    if (!a[columnKey]) return 1;
-    if (!b[columnKey]) return -1;
-
-    if (a[columnKey] < b[columnKey]) {
-      return direction === 'ascending' ? -1 : 1;
-    }
-    if (a[columnKey] > b[columnKey]) {
-      return direction === 'ascending' ? 1 : -1;
-    }
-    return 0;
-  });
-
-  setParts(sortedParts);
-};
 
   // ค้นหา parts
   const handleSearch = () => {
@@ -516,69 +475,18 @@ function ManageSerialPage() {
               <div className="table-responsive">
                 <Table hover className="align-middle border table-dark" style={{ borderRadius: "8px", overflow: "hidden" }}>
                   <thead style={{ backgroundColor: "#333333" }}>
-  <tr className="text-center">
-    <th className="py-3" style={{ color: "#e0e0e0" }}>No.</th>
-
-    <th 
-      className="py-3"
-      style={{ color: "#e0e0e0", cursor: "pointer" }}
-      onClick={() => handleSort("part_num")}
-    >
-      Part Number {getSortIcon("part_num")}
-    </th>
-
-    <th 
-      className="py-3"
-      style={{ color: "#e0e0e0", cursor: "pointer" }}
-      onClick={() => handleSort("part_name")}
-    >
-      Part Name {getSortIcon("part_name")}
-    </th>
-
-    <th 
-      className="py-3"
-      style={{ color: "#e0e0e0", cursor: "pointer" }}
-      onClick={() => handleSort("part_type")}
-    >
-      Type Prefix {getSortIcon("part_type")}
-    </th>
-
-    <th 
-      className="py-3"
-      style={{ color: "#e0e0e0", cursor: "pointer" }}
-      onClick={() => handleSort("supplier")}
-    >
-      Supplier {getSortIcon("supplier")}
-    </th>
-
-    <th 
-      className="py-3"
-      style={{ color: "#e0e0e0", cursor: "pointer" }}
-      onClick={() => handleSort("brand")}
-    >
-      Brand {getSortIcon("brand")}
-    </th>
-
-    <th 
-      className="py-3"
-      style={{ color: "#e0e0e0", cursor: "pointer" }}
-      onClick={() => handleSort("min")}
-    >
-      Min {getSortIcon("min")}
-    </th>
-
-    <th 
-      className="py-3"
-      style={{ color: "#e0e0e0", cursor: "pointer" }}
-      onClick={() => handleSort("part_detail")}
-    >
-      Detail {getSortIcon("part_detail")}
-    </th>
-
-    <th className="py-3" style={{ color: "#e0e0e0" }}>Action</th>
-  </tr>
-</thead>
-
+                    <tr className="text-center">
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>No.</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Part Number</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Part Name</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Type Prefix</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Supplier</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Brand</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Min</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Detail</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Action</th>
+                    </tr>
+                  </thead>
 
                   {currentPartPageData.length === 0 ? (
                     <tbody>

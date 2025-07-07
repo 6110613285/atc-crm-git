@@ -24,8 +24,6 @@ function BorrowPage() {
   const [currentPageData, setCurrentPageData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [sortConfig, setSortConfig] = useState({ key: "", direction: "ascending" });
-
 
   const itemsPerPage = 15;
 
@@ -77,44 +75,6 @@ function BorrowPage() {
     // อัพเดทข้อมูลที่แสดงและกลับไปหน้าแรก
     paginate(1, filteredData);
   };
-
-  const handleSort = (key) => {
-  let direction = 'ascending';
-  if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-    direction = 'descending';
-  }
-  setSortConfig({ key, direction });
-
-  const sortedData = [...borrowedItems].sort((a, b) => {
-    let aValue = a[key];
-    let bValue = b[key];
-
-    // กรณีวันที่
-    if (key === 'datetime') {
-      const aDate = new Date(aValue);
-      const bDate = new Date(bValue);
-      return direction === 'ascending' ? aDate - bDate : bDate - aDate;
-    }
-
-    const aNum = parseFloat(aValue);
-    const bNum = parseFloat(bValue);
-    const bothNumbers = !isNaN(aNum) && !isNaN(bNum);
-
-    if (bothNumbers) {
-      return direction === 'ascending' ? aNum - bNum : bNum - aNum;
-    } else {
-      const aStr = (aValue || '').toString().toLowerCase();
-      const bStr = (bValue || '').toString().toLowerCase();
-      if (aStr < bStr) return direction === 'ascending' ? -1 : 1;
-      if (aStr > bStr) return direction === 'ascending' ? 1 : -1;
-      return 0;
-    }
-  });
-
-  setBorrowedItems(sortedData);
-  paginate(1, sortedData);
-};
-
 
   // ฟังก์ชันฟอร์แมตวันที่
   const formatDate = (dateString) => {
@@ -257,46 +217,21 @@ function BorrowPage() {
               <div className="table-responsive">
                 <Table hover className="align-middle border table-dark" style={{ borderRadius: "8px", overflow: "hidden" }}>
                   <thead style={{ backgroundColor: "#333333" }}>
-  <tr className="text-center">
-    {[
-      { label: "User", key: "user" },
-      { label: "Serial Number", key: "serial_num" },
-      { label: "Location", key: "location" },
-      { label: "Part Name", key: "part_name" },
-      { label: "Part Number", key: "part_num" },
-      { label: "Qty", key: "borrowed_qty" },
-      { label: "Store Name", key: "store_name" },
-      { label: "Supplier", key: "supplier" },
-      { label: "Supplier Serial", key: "sup_serial" },
-      { label: "Supplier Barcode", key: "sup_barcode" },
-      { label: "Borrow Date", key: "datetime" },
-      { label: "Note", key: "note" },
-    ].map((col) => (
-      <th key={col.key} className="py-3" style={{ color: "#e0e0e0" }}>
-        <div className="d-flex justify-content-center align-items-center gap-1">
-          {col.label}
-          <span
-            onClick={() => handleSort(col.key)}
-            style={{
-              cursor: "pointer",
-              userSelect: "none",
-              fontSize: "0.9em",
-              color: sortConfig.key === col.key ? "#00e676" : "#aaa",
-            }}
-          >
-            {sortConfig.key === col.key
-              ? sortConfig.direction === "ascending"
-                ? "▲"
-                : "▼"
-              : "△"}
-          </span>
-        </div>
-      </th>
-    ))}
-  </tr>
-</thead>
-
-
+                    <tr className="text-center">
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>User</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Serial Number</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Location</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Part Name</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Part Number</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Qty</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Store Name</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Supplier</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Supplier Serial</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Supplier Barcode</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Borrow Date</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Note</th>
+                    </tr>
+                  </thead>
 
                   <tbody>
                     {loading ? (

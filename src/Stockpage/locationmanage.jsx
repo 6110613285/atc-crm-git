@@ -26,8 +26,6 @@ function Locationmanage() {
   // สถานะสำหรับตาราง Location
   const [currentLocationPageData, setCurrentLocationPageData] = useState([]);
   const [currentLocationPage, setCurrentLocationPage] = useState(1);
-  const [sortConfig, setSortConfig] = useState({ key: '', direction: '' });
-  
 
   // สถานะสำหรับตาราง Store
   const [currentStorePageData, setCurrentStorePageData] = useState([]);
@@ -64,19 +62,6 @@ function Locationmanage() {
       setLocations([]);
     }
   };
-
-  const getSortIcon = (columnKey) => {
-  if (sortConfig.key !== columnKey) {
-    return (
-      <span style={{ color: "#888" }}>△</span>
-    );
-  }
-  return sortConfig.direction === 'ascending' ? (
-    <span style={{ color: "#00e676" }}>▲</span>
-  ) : (
-    <span style={{ color: "#00e676" }}>▼</span>
-  );
-};
 
   // ฟังก์ชันดึงข้อมูลคลัง
   const getStores = async () => {
@@ -217,13 +202,12 @@ function Locationmanage() {
   };
 
   // ฟังก์ชันแบ่งหน้าข้อมูลสถานที่
-  const paginateLocations = (pageNumber, data = locations) => {
-  const startIndex = (pageNumber - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  setCurrentLocationPageData(data.slice(startIndex, endIndex));
-  setCurrentLocationPage(pageNumber);
-};
-
+  const paginateLocations = (pageNumber) => {
+    const startIndex = (pageNumber - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setCurrentLocationPageData(locations.slice(startIndex, endIndex));
+    setCurrentLocationPage(pageNumber);
+  };
 
   // ฟังก์ชันแบ่งหน้าข้อมูลคลัง
   const paginateStores = (pageNumber) => {
@@ -248,36 +232,11 @@ function Locationmanage() {
     paginateStores(currentStorePage);
   }, [stores]);
 
-  
-
-  useEffect(() => {
-  let sortedLocations = [...locations];
-  if (sortConfig.key) {
-    sortedLocations.sort((a, b) => {
-      if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'ascending' ? -1 : 1;
-      if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'ascending' ? 1 : -1;
-      return 0;
-    });
-  }
-  paginateLocations(currentLocationPage, sortedLocations);
-}, [locations, sortConfig, currentLocationPage]);
-
-
   // ฟังก์ชันจัดการการบันทึก
   const handleSave = () => {
     getLocations();
     getStores();
   };
-
-  const handleSort = (key) => {
-  let direction = "ascending";
-  if (sortConfig.key === key && sortConfig.direction === "ascending") {
-    direction = "descending";
-  }
-  setSortConfig({ key, direction });
-};
-
-
 
   // ฟังก์ชันจัดการการกดปุ่ม Enter
   const handleKeyPress = (event) => {
@@ -429,25 +388,14 @@ function Locationmanage() {
                 <div className="table-responsive">
                   <Table hover className="align-middle border table-dark" style={{ borderRadius: "8px", overflow: "hidden" }}>
                     <thead style={{ backgroundColor: "#333333" }}>
-  <tr className="text-center">
-    <th className="py-3" style={{ color: "#e0e0e0" }}>No.</th>
-
-    <th className="py-3" style={{ cursor: "pointer" }} onClick={() => handleSort("location_name")}>
-      Location {getSortIcon("location_name")}
-    </th>
-
-    <th className="py-3" style={{ cursor: "pointer" }} onClick={() => handleSort("store_name")}>
-      Store Name {getSortIcon("store_name")}
-    </th>
-
-    <th className="py-3" style={{ cursor: "pointer" }} onClick={() => handleSort("location_detail")}>
-      Detail {getSortIcon("location_detail")}
-    </th>
-
-    <th className="py-3" style={{ color: "#e0e0e0" }}>Action</th>
-  </tr>
-</thead>
-
+                      <tr className="text-center">
+                        <th className="py-3" style={{ color: "#e0e0e0" }}>No.</th>
+                        <th className="py-3" style={{ color: "#e0e0e0" }}>Store Name</th>
+                        <th className="py-3" style={{ color: "#e0e0e0" }}>Address</th>
+                        <th className="py-3" style={{ color: "#e0e0e0" }}>Detail</th>
+                        <th className="py-3" style={{ color: "#e0e0e0" }}>Action</th>
+                      </tr>
+                    </thead>
 
                     {stores.length === 0 ? (
                       <tbody>
@@ -615,44 +563,15 @@ function Locationmanage() {
                 <div className="table-responsive">
                   <Table hover className="align-middle border table-dark" style={{ borderRadius: "8px", overflow: "hidden" }}>
                     <thead style={{ backgroundColor: "#333333" }}>
-  <tr className="text-center">
-    <th className="py-3" style={{ color: "#e0e0e0" }}>No.</th>
-
-    <th 
-      className="py-3" 
-      style={{ color: "#e0e0e0", cursor: "pointer" }}
-      onClick={() => handleSort("location_name")}
-    >
-      Location {getSortIcon("location_name")}
-    </th>
-
-    <th 
-      className="py-3" 
-      style={{ color: "#e0e0e0", cursor: "pointer" }}
-      onClick={() => handleSort("store_name")}
-    >
-      Store Name {getSortIcon("store_name")}
-    </th>
-
-    <th 
-      className="py-3" 
-      style={{ color: "#e0e0e0", cursor: "pointer" }}
-      onClick={() => handleSort("location_detail")}
-    >
-      Detail {getSortIcon("location_detail")}
-    </th>
-
-    <th 
-      className="py-3" 
-      style={{ color: "#e0e0e0", cursor: "pointer" }}
-      onClick={() => handleSort("datetime")}
-    >
-      Date Create {getSortIcon("datetime")}
-    </th>
-
-    <th className="py-3" style={{ color: "#e0e0e0" }}>Action</th>
-  </tr>
-</thead>
+                      <tr className="text-center">
+                        <th className="py-3" style={{ color: "#e0e0e0" }}>No.</th>
+                        <th className="py-3" style={{ color: "#e0e0e0" }}>Location</th>
+                        <th className="py-3" style={{ color: "#e0e0e0" }}>Store Name</th>
+                        <th className="py-3" style={{ color: "#e0e0e0" }}>Detail</th>
+                        <th className="py-3" style={{ color: "#e0e0e0" }}>Date Create</th>
+                        <th className="py-3" style={{ color: "#e0e0e0" }}>Action</th>
+                      </tr>
+                    </thead>
 
                     {locations.length === 0 ? (
                       <tbody>
