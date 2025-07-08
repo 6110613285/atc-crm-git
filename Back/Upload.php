@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $fileExtension = pathinfo($image['name'], PATHINFO_EXTENSION);
         $uniqueName = uniqid() . '_' . time() . '.' . $fileExtension;
         
-        $uploadDir = __DIR__ . '/uploads/';
+        $uploadDir = __DIR__ . './uploads/';
         $uploadPath = $uploadDir . $uniqueName;
         
         // Create upload directory if it doesn't exist
@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // Move uploaded file
         if (move_uploaded_file($image['tmp_name'], $uploadPath)) {
-            $relativePath = 'uploads/' . $uniqueName;
+            $relativePath = './uploads/' . $uniqueName;
             
             // Update database using prepared statement
             $stmt = $link->prepare("UPDATE tb_part_no SET picture = ? WHERE part_num = ?");
