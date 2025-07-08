@@ -579,7 +579,7 @@ else if ($action == "deleteSerial") {
     echo json_encode(array("last_count" => $max_count));
 
     mysqli_close($link);
-}else if ($action == "getSerialInfo") {
+} else if ($action == "getSerialInfo") {
     $serial_num = $_GET['serial_num'];
 
     // ตรวจสอบว่ามีการส่งค่า serial_num มาหรือไม่
@@ -1367,7 +1367,7 @@ else if ($action == "deleteSerial") {
     mysqli_close($link);
     return;
 
-}else if ($action == "getStockParts") {
+} else if ($action == "getStockParts") {
     // วิธีที่ 1: รวมทุก column ที่ต้องการเลือกไว้ใน GROUP BY
     $sql = "SELECT tb_stock.part_num, tb_stock.part_name, tb_stock.supplier, 
             tb_stock.location, tb_stock.store_name, tb_stock.note, 
@@ -1459,15 +1459,15 @@ else if ($action == "deleteSerial") {
     mysqli_close($link);
     return;
 
-}else if ($action == 'addBucket') {
+} else if ($action == 'addBucket') {
     // สร้าง BucketID อัตโนมัติ
     $sql = "SELECT MAX(CAST(SUBSTRING(BucketID, 1) AS UNSIGNED)) as max_id FROM tb_bucket";
     $result = mysqli_query($conn, $sql);
     $row = mysqli_fetch_assoc($result);
     $nextId = str_pad(($row['max_id'] + 1), 2, '0', STR_PAD_LEFT);
-    
-    
-}else if ($action == "deleteBucket") {
+
+
+} else if ($action == "deleteBucket") {
     // รับค่า part_num จาก URL parameter
     $uid = $_GET['uid'];
 
@@ -1497,9 +1497,9 @@ else if ($action == "deleteSerial") {
 
     mysqli_close($link);
 
-}else if ($action === 'saveBucket') {
+} else if ($action === 'saveBucket') {
     // Get parameters
-    
+
     $PO = $_GET['PO'] ?? '';
     $QO = $_GET['QO'] ?? '';
     $CUSTOMER = $_GET['CUSTOMER'] ?? '';
@@ -1511,10 +1511,10 @@ else if ($action == "deleteSerial") {
     $status = $_GET['status'] ?? '';
     $datetime = $_GET['datetime'] ?? '';
     $Note = $_GET['Note'] ?? '';
-    
+
     // Validate and truncate data to prevent "Data too long" errors
     // Adjust these lengths based on your actual column definitions
-    
+
     $PO = substr($PO, 0, 100);
     $QO = substr($QO, 0, 100); // Adjust this length as needed
     $CUSTOMER = substr($CUSTOMER, 0, 255);
@@ -1526,34 +1526,46 @@ else if ($action == "deleteSerial") {
     $status = substr($status, 0, 50);
     $datetime = substr($datetime, 0, 50);
     $Note = substr($Note, 0, 1000);
-    
+
     // Use prepared statements to prevent SQL injection
     $sql = "INSERT INTO tb_bucket 
             ( PO, QO, CUSTOMER, BucketID, USERID, USERNAME, Partname, QTY, status, datetime, Note)
             VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            
+
     $stmt = mysqli_prepare($link, $sql);
-    
+
     if ($stmt) {
-        mysqli_stmt_bind_param($stmt, "sssssssssss", 
-            $PO, $QO, $CUSTOMER, $BucketID, $USERID, 
-            $USERNAME, $Partname, $QTY, $status, $datetime, $Note);
-        
+        mysqli_stmt_bind_param(
+            $stmt,
+            "sssssssssss",
+            $PO,
+            $QO,
+            $CUSTOMER,
+            $BucketID,
+            $USERID,
+            $USERNAME,
+            $Partname,
+            $QTY,
+            $status,
+            $datetime,
+            $Note
+        );
+
         $result = mysqli_stmt_execute($stmt);
-        
+
         if ($result) {
             echo json_encode(["status" => "success", "message" => "Data saved successfully"]);
         } else {
             echo json_encode(["status" => "error", "message" => "Failed to save data: " . mysqli_error($link)]);
         }
-        
+
         mysqli_stmt_close($stmt);
     } else {
         echo json_encode(["status" => "error", "message" => "Failed to prepare statement: " . mysqli_error($link)]);
     }
-    
+
     mysqli_close($link);
-}else if ($action == "getSerialsForLocation") {
+} else if ($action == "getSerialsForLocation") {
     $location = $_GET['location'];
 
     $sql = "SELECT part_num, part_name, supplier, serial_num, qty 
@@ -1672,6 +1684,170 @@ else if ($action == "deleteSerial") {
                         throw new Exception("Error: Serial number not found in tb_gensn: " . $serial_num);
                     }
                 }
+
+            //img
+            case 'getPartImages':
+                if (isset($_GET['part_num'])) {
+                    $partNum = $_GET['part_num'];
+
+                    try {
+                        // Query ดึงรูปภาพจากฐานข้อมูล
+                        $stmt = $pdo->prepare("SELECT * FROM part_images WHERE part_num = ? ORDER BY created_at DESC");
+                        $stmt->execute([$partNum]);
+                        $images = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                        // ตรวจสอบว่าไฟล์รูปภาพยังอยู่ในระบบหรือไม่
+                        $validImages = [];
+                        foreach ($images as $image) {
+                            $filePath = __DIR__ . '/atc-crm-api/uploads/' . $image['filename'];
+                            if (file_exists($filePath)) {
+                                $validImages[] = [
+                                    'id' => $image['id'],
+                                    'filename' => $image['filename'],
+                                    'description' => $image['description'],
+                                    'url' => $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'] . '/atc-crm-api/uploads/' . $image['filename'],
+                                    'created_at' => $image['created_at']
+                                ];
+                            }
+                        }
+
+                        echo json_encode([
+                            'status' => 'success',
+                            'images' => $validImages,
+                            'total' => count($validImages)
+                        ]);
+
+                    } catch (PDOException $e) {
+                        echo json_encode([
+                            'status' => 'error',
+                            'message' => 'Database error: ' . $e->getMessage()
+                        ]);
+                    }
+                } else {
+                    echo json_encode([
+                        'status' => 'error',
+                        'message' => 'Part number is required'
+                    ]);
+                }
+                break;
+
+            case 'uploadPartImage':
+                if (isset($_POST['part_num']) && isset($_FILES['image'])) {
+                    $partNum = $_POST['part_num'];
+                    $description = $_POST['description'] ?? '';
+
+                    // ตรวจสอบไฟล์
+                    $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+                    $maxSize = 5 * 1024 * 1024; // 5MB
+
+                    $file = $_FILES['image'];
+
+                    if (!in_array($file['type'], $allowedTypes)) {
+                        echo json_encode([
+                            'status' => 'error',
+                            'message' => 'Invalid file type. Only JPG, PNG, GIF allowed.'
+                        ]);
+                        break;
+                    }
+
+                    if ($file['size'] > $maxSize) {
+                        echo json_encode([
+                            'status' => 'error',
+                            'message' => 'File too large. Maximum size is 5MB.'
+                        ]);
+                        break;
+                    }
+
+                    // สร้างชื่อไฟล์ใหม่
+                    $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+                    $filename = $partNum . '_' . time() . '_' . uniqid() . '.' . $extension;
+                    $uploadPath = __DIR__ . '../uploads/' . $filename;
+
+                    // สร้างโฟลเดอร์ถ้ายังไม่มี
+                    $uploadDir = __DIR__ . '../uploads/';
+                    if (!is_dir($uploadDir)) {
+                        mkdir($uploadDir, 0755, true);
+                    }
+
+                    if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
+                        try {
+                            // บันทึกข้อมูลในฐานข้อมูล
+                            $stmt = $pdo->prepare("INSERT INTO part_images (part_num, filename, description, created_at) VALUES (?, ?, ?, NOW())");
+                            $stmt->execute([$partNum, $filename, $description]);
+
+                            echo json_encode([
+                                'status' => 'success',
+                                'message' => 'Image uploaded successfully',
+                                'filename' => $filename
+                            ]);
+
+                        } catch (PDOException $e) {
+                            // ลบไฟล์ถ้าบันทึกฐานข้อมูลไม่สำเร็จ
+                            unlink($uploadPath);
+                            echo json_encode([
+                                'status' => 'error',
+                                'message' => 'Database error: ' . $e->getMessage()
+                            ]);
+                        }
+                    } else {
+                        echo json_encode([
+                            'status' => 'error',
+                            'message' => 'Failed to upload file'
+                        ]);
+                    }
+                } else {
+                    echo json_encode([
+                        'status' => 'error',
+                        'message' => 'Part number and image file are required'
+                    ]);
+                }
+                break;
+
+            case 'deletePartImage':
+                if (isset($_GET['image_id'])) {
+                    $imageId = $_GET['image_id'];
+
+                    try {
+                        // ดึงข้อมูลรูปภาพ
+                        $stmt = $pdo->prepare("SELECT filename FROM part_images WHERE id = ?");
+                        $stmt->execute([$imageId]);
+                        $image = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                        if ($image) {
+                            // ลบไฟล์
+                            $filePath = __DIR__ . '../uploads/' . $image['filename'];
+                            if (file_exists($filePath)) {
+                                unlink($filePath);
+                            }
+
+                            // ลบข้อมูลจากฐานข้อมูล
+                            $stmt = $pdo->prepare("DELETE FROM part_images WHERE id = ?");
+                            $stmt->execute([$imageId]);
+
+                            echo json_encode([
+                                'status' => 'success',
+                                'message' => 'Image deleted successfully'
+                            ]);
+                        } else {
+                            echo json_encode([
+                                'status' => 'error',
+                                'message' => 'Image not found'
+                            ]);
+                        }
+
+                    } catch (PDOException $e) {
+                        echo json_encode([
+                            'status' => 'error',
+                            'message' => 'Database error: ' . $e->getMessage()
+                        ]);
+                    }
+                } else {
+                    echo json_encode([
+                        'status' => 'error',
+                        'message' => 'Image ID is required'
+                    ]);
+                }
+
 
                 break;
 
@@ -2183,7 +2359,7 @@ else if ($action == "addProduct") {
         $log_stmt = mysqli_prepare($link, $log_sql);
         $status_log = "IN";
         $user = "System"; // หรือใช้จากผู้ใช้ที่ล็อกอิน
-        
+
         mysqli_stmt_bind_param(
             $log_stmt,
             "sssss",
@@ -2420,7 +2596,14 @@ else if ($action == "addFixItem") {
 
 // ฟังก์ชันแก้ไข Fix Item
 else if ($action == "updateFixItem") {
-   
+    $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
+    if ($id <= 0) {
+        echo json_encode(array("status" => "error", "message" => "Invalid ID"));
+        mysqli_close($link);
+        return;
+    }
+
     // รับข้อมูลจาก GET parameters
     $status = isset($_GET['Status']) ? mysqli_real_escape_string($link, $_GET['Status']) : '';
     $location = isset($_GET['Location']) ? mysqli_real_escape_string($link, $_GET['Location']) : '';
@@ -2444,11 +2627,22 @@ else if ($action == "updateFixItem") {
         return;
     }
 
+    // ตรวจสอบว่า fixID ซ้ำกับรายการอื่นหรือไม่
+    $checkSQL = "SELECT id FROM tb_fixlist WHERE fixID = '$fixID' AND id != $id";
+    $checkResult = mysqli_query($link, $checkSQL);
+
+    if (mysqli_num_rows($checkResult) > 0) {
+        echo json_encode(array("status" => "error", "message" => "Fix ID already exists"));
+        mysqli_close($link);
+        return;
+    }
+
     // อัพเดทข้อมูล
-    $sql = "INSERT `tb_fixlist` SET 
+    $sql = "UPDATE `tb_fixlist` SET 
                 `Status` = '$status',
                 `Location` = '$location',
                 `date` = '$date',
+                `fixID` = '$fixID',
                 `Modal` = '$modal',
                 `Cpu` = '$cpu',
                 `Mainboard` = '$mainboard',
@@ -2459,7 +2653,7 @@ else if ($action == "updateFixItem") {
                 `equipinsite` = '$equipinsite',
                 `sender` = '$sender',
                 `receiver` = '$receiver'
-            WHERE `fixID` = $fixID";
+            WHERE id = $id";
 
     $result = mysqli_query($link, $sql);
 
@@ -2479,6 +2673,7 @@ else if ($action == "updateFixItem") {
 // ฟังก์ชันลบ Fix Item
 else if ($action == "deleteFixItem") {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
     if ($id <= 0) {
         echo json_encode(array("status" => "error", "message" => "Invalid ID"));
         mysqli_close($link);
@@ -2591,7 +2786,7 @@ else if ($action == "getFixListStats") {
         echo json_encode("ok");
     }
     mysqli_close($link);
-}else if ($action == "updateStockItem") {
+} else if ($action == "updateStockItem") {
     $part_num = isset($_GET['part_num']) ? $_GET['part_num'] : '';
     $part_name = isset($_GET['part_name']) ? $_GET['part_name'] : '';
     $supplier = isset($_GET['supplier']) ? $_GET['supplier'] : '';
@@ -2633,7 +2828,7 @@ else if ($action == "getFixListStats") {
             WHERE serial_num = ?";
 
     $stmt = mysqli_prepare($link, $sql);
-    
+
     if (!$stmt) {
         echo json_encode(array("error" => "Error preparing statement: " . mysqli_error($link)));
         mysqli_close($link);
@@ -2660,7 +2855,7 @@ else if ($action == "getFixListStats") {
     if ($executeResult) {
         // ตรวจสอบว่ามีการอัปเดตหรือไม่
         $affectedRows = mysqli_stmt_affected_rows($stmt);
-        
+
         if ($affectedRows > 0) {
             echo json_encode("ok");
         } else {
@@ -2696,7 +2891,7 @@ else if ($action == "insertEditLog") {
             ) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
     $stmt = mysqli_prepare($link, $sql);
-    
+
     if ($stmt) {
         mysqli_stmt_bind_param(
             $stmt,
@@ -2711,13 +2906,13 @@ else if ($action == "insertEditLog") {
         );
 
         $executeResult = mysqli_stmt_execute($stmt);
-        
+
         if ($executeResult) {
             echo json_encode("ok");
         } else {
             echo json_encode(array("error" => "ไม่สามารถบันทึก log ได้"));
         }
-        
+
         mysqli_stmt_close($stmt);
     } else {
         echo json_encode(array("error" => "Error preparing log statement"));
@@ -2751,7 +2946,7 @@ else if ($action == "getItemDetails") {
     echo json_encode($data);
     mysqli_close($link);
     exit;
-}else if ($action == "outProduct") {
+} else if ($action == "outProduct") {
     // รับข้อมูลจาก GET parameters
     $product_id = $_GET['product_id'] ?? '';
     $customer = isset($_GET['customer']) ? mysqli_real_escape_string($link, $_GET['customer']) : '';
@@ -2779,7 +2974,7 @@ else if ($action == "getItemDetails") {
     }
 
     $productData = mysqli_fetch_assoc($checkResult);
-    
+
     // ตรวจสอบว่าสินค้ายังไม่ได้ขาย
     if ($productData['Product_status'] === 'ขายแล้ว') {
         echo json_encode(array("status" => "error", "message" => "สินค้านี้ขายไปแล้ว"));
@@ -2814,7 +3009,7 @@ else if ($action == "getItemDetails") {
         $log_stmt = mysqli_prepare($link, $log_sql);
         $status_log = "OUT";
         $user = "System"; // หรือใช้จากผู้ใช้ที่ล็อกอิน
-        
+
         mysqli_stmt_bind_param(
             $log_stmt,
             "sssss",
@@ -2871,7 +3066,7 @@ else if ($action == "getProductBySerial") {
     }
 
     mysqli_close($link);
-}else if ($action == "getPcLog") {
+} else if ($action == "getPcLog") {
     $sql = "SELECT * FROM tb_log_pc ORDER BY date DESC, logID DESC LIMIT 1000";
     $result = mysqli_query($link, $sql);
 
@@ -2973,13 +3168,13 @@ else if ($action == "addPcLog") {
                 VALUES (?, ?, ?, ?, ?)";
 
     $log_stmt = mysqli_prepare($link, $log_sql);
-    
+
     if (!$log_stmt) {
         echo json_encode(array("status" => "error", "message" => "Prepare failed: " . mysqli_error($link)));
         mysqli_close($link);
         return;
     }
-    
+
     mysqli_stmt_bind_param(
         $log_stmt,
         "sssss",
@@ -3000,7 +3195,42 @@ else if ($action == "addPcLog") {
 
     mysqli_stmt_close($log_stmt);
     mysqli_close($link);
-}else {
-    echo json_encode("fail");
+} else if ($action == "getPartImages") {
+    ini_set('display_errors', 1);
+    ini_set('display_startup_errors', 1);
+    error_reporting(E_ALL);
+
+    $partNum = $_GET['partNum'] ?? '';
+    if (!$partNum) {
+        echo json_encode(["status" => "error", "message" => "No partNum provided"]);
+        mysqli_close($link);
+        return;
+    }
+
+    $partNum = mysqli_real_escape_string($link, $partNum);
+    $sql = "SELECT picture FROM tb_part_no WHERE part_num = '$partNum'";
+    $result = mysqli_query($link, $sql);
+
+    if (!$result) {
+        echo json_encode(["status" => "error", "message" => "Database query failed"]);
+        mysqli_close($link);
+        return;
+    }
+
+    $images = [];
+    while ($row = mysqli_fetch_assoc($result)) {
+        $picture = $row['picture'];
+        if ($picture && !empty($picture) && $picture !== 'NULL') {
+            $normalizedPath = str_replace("\\", "/", $picture);
+            $normalizedPath = ltrim($normalizedPath, '/');  // ✅ ป้องกัน /
+            $fullUrl = "http://" . $_SERVER['HTTP_HOST'] . "/atc-crm-api/uploads/" . basename($normalizedPath);
+            $images[] = $fullUrl;
+        }
+    }
+
+    echo json_encode([
+        "status" => "success",
+        "images" => $images
+    ], JSON_UNESCAPED_SLASHES);
     mysqli_close($link);
 }
