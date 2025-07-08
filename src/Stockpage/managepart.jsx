@@ -4,23 +4,40 @@ import PaginationComponent from "../components/PaginationComponent";
 import Addpart from "../Stockpage/addpart";
 import Upimage from "../Stockpage/Upimage";
 import Swal from "sweetalert2";
+import PartImageModal from "../Stockpage/PartImageModal";
 
 import EditModal from "../Stockpage/EditModal";
 import { Pencil } from "react-bootstrap-icons";
-import { 
-  Search, 
-  XCircle, 
-  Trash, 
-  Plus, 
+import {
+  Search,
+  XCircle,
+  Trash,
+  Plus,
   Tools
 } from "react-bootstrap-icons";
 
+
 function ManageSerialPage() {
+  const [selectedPartNum, setSelectedPartNum] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+
+  const showImageModal = (partNum) => {
+    setSelectedPartNum(partNum);
+    setShowModal(true);
+  };
+
+  const hideImageModal = () => {
+    setShowModal(false)
+  };
+
   const searchRef = useRef(null);
   const searchContainerRef = useRef(null);
   const [parts, setParts] = useState([]);
+
+  // แยก state สำหรับ Modal แต่ละตัว
   const [showUploadModal, setShowUploadModal] = useState(false);
-  
+  const [selectedPartForUpload, setSelectedPartForUpload] = useState(null);
+
   // สถานะสำหรับการค้นหาแบบใหม่
   const [searchTerm, setSearchTerm] = useState("");
   const [suggestions, setSuggestions] = useState([]);
@@ -141,7 +158,7 @@ function ManageSerialPage() {
     }
     setShowSuggestions(false);
     setSelectedSuggestionIndex(-1);
-    
+
     // ทำการค้นหาทันทีเมื่อเลือก suggestion
     const filteredData = parts.filter(part =>
       part.part_name?.toLowerCase().includes(suggestion.text.toLowerCase()) ||
@@ -166,18 +183,18 @@ function ManageSerialPage() {
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setSelectedSuggestionIndex(prev => 
+        setSelectedSuggestionIndex(prev =>
           prev < suggestions.length - 1 ? prev + 1 : 0
         );
         break;
-        
+
       case 'ArrowUp':
         e.preventDefault();
-        setSelectedSuggestionIndex(prev => 
+        setSelectedSuggestionIndex(prev =>
           prev > 0 ? prev - 1 : suggestions.length - 1
         );
         break;
-        
+
       case 'Enter':
         e.preventDefault();
         if (selectedSuggestionIndex >= 0 && selectedSuggestionIndex < suggestions.length) {
@@ -186,12 +203,12 @@ function ManageSerialPage() {
           handleSearch();
         }
         break;
-        
+
       case 'Escape':
         setShowSuggestions(false);
         setSelectedSuggestionIndex(-1);
         break;
-        
+
       default:
         break;
     }
@@ -256,6 +273,24 @@ function ManageSerialPage() {
     }
   };
 
+  // === ฟังก์ชันจัดการ Modal ===
+  const handleOpenUploadModal = (part) => {
+    setSelectedPartForUpload(part.part_num);  // ✅ ส่งแค่ part_num (string)
+    setShowUploadModal(true);
+  };
+
+
+  const handleCloseUploadModal = () => {
+    setShowUploadModal(false);
+    setSelectedPartForUpload(null);
+  };
+
+  const handleUploadSuccess = () => {
+    // รีเฟรชข้อมูลหลังจากอัปโหลดสำเร็จ
+    getParts();
+    handleCloseUploadModal();
+  };
+
   // ===== ฟังก์ชันแบ่งหน้า =====
   // แบ่งหน้าสำหรับข้อมูล parts
   const paginateParts = (pageNumber, data = parts) => {
@@ -303,26 +338,26 @@ function ManageSerialPage() {
   };
 
   return (
-    <div className="min-vh-100" style={{ 
-        fontFamily: "'Inter', 'Prompt', sans-serif",
-        backgroundColor: "#1a1a1a",
-        color: "#e0e0e0"
-      }}>
+    <div className="min-vh-100" style={{
+      fontFamily: "'Inter', 'Prompt', sans-serif",
+      backgroundColor: "#1a1a1a",
+      color: "#e0e0e0"
+    }}>
       {/* ส่วนแท็บการจัดการ */}
       <Tabs
         activeKey="parts"
         className="mb-0 nav-fill"
-        style={{ 
+        style={{
           backgroundColor: "#2a2a2a",
           borderBottom: "1px solid #333333",
           boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
         }}
       >
-        <Tab 
-          eventKey="parts" 
+        <Tab
+          eventKey="parts"
           title={
             <div className="d-flex align-items-center py-3" style={{ color: "#00c853" }}>
-              <Tools className="me-2" /> 
+              <Tools className="me-2" />
               <span className="fw-medium">Create New Parts</span>
             </div>
           }
@@ -342,7 +377,7 @@ function ManageSerialPage() {
                   <div className="position-relative" ref={searchContainerRef}>
                     <FormControl
                       className="ps-4"
-                      style={{ 
+                      style={{
                         borderRadius: "6px",
                         boxShadow: "none",
                         minWidth: "1000px",
@@ -360,9 +395,9 @@ function ManageSerialPage() {
                         if (suggestions.length > 0) setShowSuggestions(true);
                       }}
                     />
-                    <Search className="position-absolute" style={{ 
-                      left: "10px", 
-                      top: "50%", 
+                    <Search className="position-absolute" style={{
+                      left: "10px",
+                      top: "50%",
                       transform: "translateY(-50%)",
                       color: "#999999"
                     }} />
@@ -440,7 +475,7 @@ function ManageSerialPage() {
 
                   <Button
                     variant="light"
-                    style={{ 
+                    style={{
                       borderRadius: "6px",
                       border: "1px solid #444444",
                       backgroundColor: "#333333",
@@ -460,7 +495,7 @@ function ManageSerialPage() {
                   <Addpart onSave={handleSave}>
                     <Button
                       variant="success"
-                      style={{ 
+                      style={{
                         borderRadius: "6px",
                         backgroundColor: "#007e33",
                         borderColor: "#007e33"
@@ -471,7 +506,7 @@ function ManageSerialPage() {
                   </Addpart>
                 </div>
               </div>
-              
+
               <div className="table-responsive">
                 <Table hover className="align-middle border table-dark" style={{ borderRadius: "8px", overflow: "hidden" }}>
                   <thead style={{ backgroundColor: "#333333" }}>
@@ -485,13 +520,14 @@ function ManageSerialPage() {
                       <th className="py-3" style={{ color: "#e0e0e0" }}>Min</th>
                       <th className="py-3" style={{ color: "#e0e0e0" }}>Detail</th>
                       <th className="py-3" style={{ color: "#e0e0e0" }}>Action</th>
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Img</th>
                     </tr>
                   </thead>
 
                   {currentPartPageData.length === 0 ? (
                     <tbody>
                       <tr>
-                        <td colSpan={9} className="text-center py-5" style={{ color: "#bdbdbd" }}>
+                        <td colSpan={10} className="text-center py-5" style={{ color: "#bdbdbd" }}>
                           <div className="d-flex flex-column align-items-center">
                             <Tools size={40} className="mb-2 text-muted" />
                             <span className="fw-medium">No Data</span>
@@ -505,8 +541,8 @@ function ManageSerialPage() {
                         <tr key={part.part_num} className="text-center">
                           <td>{(currentPartPage - 1) * itemsPerPage + index + 1}</td>
                           <td>
-                            <Badge bg="dark" text="light" style={{ 
-                              fontWeight: "medium", 
+                            <Badge bg="dark" text="light" style={{
+                              fontWeight: "medium",
                               backgroundColor: "#424242",
                               padding: "6px 8px",
                               borderRadius: "4px"
@@ -516,8 +552,8 @@ function ManageSerialPage() {
                           </td>
                           <td className="fw-medium text-white">{part.part_name}</td>
                           <td>
-                            <Badge bg="success" style={{ 
-                              fontWeight: "normal", 
+                            <Badge bg="success" style={{
+                              fontWeight: "normal",
                               backgroundColor: "#00c853",
                               padding: "5px 8px",
                               borderRadius: "4px",
@@ -531,52 +567,75 @@ function ManageSerialPage() {
                           <td>{part.min}</td>
                           <td>{part.part_detail || "-"}</td>
                           <td>
-                            <EditModal 
-                              entityType="part" 
-                              data={part}
-                              onSave={handleSave}
-                              customTitle="แก้ไขข้อมูลชิ้นส่วน"
-                            >
+                            <div className="d-flex justify-content-center gap-1">
+                              <EditModal
+                                entityType="part"
+                                data={part}
+                                onSave={handleSave}
+                                customTitle="แก้ไขข้อมูลชิ้นส่วน"
+                              >
+                                <Button
+                                  variant="warning"
+                                  size="sm"
+                                  style={{
+                                    borderRadius: "6px",
+                                    backgroundColor: "#fb8c00",
+                                    borderColor: "#fb8c00"
+                                  }}
+                                >
+                                  <Pencil size={16} />
+                                </Button>
+                              </EditModal>
+
                               <Button
-                                variant="warning"
+                                variant="info"
                                 size="sm"
-                                className="ms-1"
                                 style={{
                                   borderRadius: "6px",
-                                  backgroundColor: "#fb8c00",
-                                  borderColor: "#fb8c00"
+                                  backgroundColor: "#0091ea",
+                                  borderColor: "#0091ea"
                                 }}
+                                onClick={() => handleOpenUploadModal(part)}  // ✅ ปุ่มนี้
                               >
-                                <Pencil size={16} />
+                                🖼️
                               </Button>
-                            </EditModal>
-                            
+
+                              <Button
+                                variant="danger"
+                                size="sm"
+                                style={{
+                                  borderRadius: "6px",
+                                  backgroundColor: "#e53935",
+                                  borderColor: "#e53935"
+                                }}
+                                onClick={() => deletePart(part.part_num)}
+                              >
+                                <Trash size={16} />
+                              </Button>
+                              {/* {showUploadModal && (
+                                <Upimage
+                                  onClose={() => setShowUploadModal(false)}
+                                  defaultPartNum={selectedPartForUpload}  // ✅ ส่งไป Upimage
+                                />
+                              )} */}
+
+                            </div>
+                          </td>
+
+                          {/* //img */}
+                          <td>
                             <Button
-                              variant="info"
-                              style={{ borderRadius: "6px", backgroundColor: "#0091ea", borderColor: "#0091ea" }}
-                              onClick={() => setShowUploadModal(true)}
-                            >
-                              🖼️
-                            </Button>
-                            <Modal show={showUploadModal} onHide={() => setShowUploadModal(false)} centered size="md">
-                              <Modal.Header closeButton>
-                                <Modal.Title>อัปโหลดรูปภาพ</Modal.Title>
-                              </Modal.Header>
-                              <Modal.Body>
-                                <Upimage />
-                              </Modal.Body>
-                            </Modal>
-                            <Button
-                              variant="danger"
+                              variant="success"
                               size="sm"
-                              style={{ 
+                              onClick={() => showImageModal(part.part_num)}
+                              style={{
                                 borderRadius: "6px",
-                                backgroundColor: "#e53935",
-                                borderColor: "#e53935"
+                                backgroundColor: "#28a745",
+                                borderColor: "#28a745"
                               }}
-                              onClick={() => deletePart(part.part_num)}
+                              title="แสดงรูปภาพ"
                             >
-                              <Trash size={16} />
+                              <Plus size={16} />
                             </Button>
                           </td>
                         </tr>
@@ -584,6 +643,11 @@ function ManageSerialPage() {
                     </tbody>
                   )}
                 </Table>
+                <PartImageModal
+                  partNum={selectedPartNum}
+                  show={showModal}
+                  onClose={hideImageModal}
+                />
               </div>
               <div className="mt-3 d-flex justify-content-center">
                 <PaginationComponent
@@ -598,6 +662,36 @@ function ManageSerialPage() {
           </Card.Body>
         </Card>
       </Container>
+
+      {/* Modal สำหรับอัปโหลดรูปภาพ - แก้ไขเพื่อไม่ให้ซ้อนกัน */}
+      <Modal
+        show={showUploadModal}
+        onHide={handleCloseUploadModal}
+        centered
+        size="lg"
+        backdrop="static"
+        keyboard={true}
+        style={{ zIndex: 1055 }}
+      >
+        <Modal.Header closeButton style={{ backgroundColor: "#2a2a2a", color: "#e0e0e0", border: "none" }}>
+          <Modal.Title style={{ fontSize: "1.25rem", fontWeight: "600" }}>
+            อัปโหลดรูปภาพ
+            {selectedPartForUpload && (
+              <span className="text-muted ms-2" style={{ fontSize: "0.9rem" }}>
+                - {selectedPartForUpload.part_name} ({selectedPartForUpload.part_num})
+              </span>
+            )}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ backgroundColor: "#2a2a2a", padding: "0" }}>
+          <Upimage
+            defaultPartNum={selectedPartForUpload}
+            // selectedPart={selectedPartForUpload}
+            onUploadSuccess={handleUploadSuccess}
+            onClose={handleCloseUploadModal}
+          />
+        </Modal.Body>
+      </Modal>
     </div>
   );
 }
