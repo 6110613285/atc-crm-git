@@ -1,17 +1,16 @@
 <?php
-
 // ✅ ตั้งค่า CORS
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Content-Type: application/json; charset=utf-8");
-
+//sever_db localhost username_db root password_db null
 // ✅ ตอบ preflight ก่อนทำอย่างอื่น
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
-
+//UserId = atc/ปดว/0001
 // ✅ Debug log
 error_log("Request Method: " . $_SERVER['REQUEST_METHOD']);
 error_log("GET params: " . print_r($_GET, true));
@@ -43,7 +42,6 @@ if (empty($action)) {
 
 // ✅ เชื่อมต่อฐานข้อมูล
 try {
-    // Database configuration
     $host = 'localhost';
     $dbname = 'db_atc_crm';
     $username = 'root';
@@ -54,7 +52,6 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false
     ]);
-    
 } catch (PDOException $e) {
     http_response_code(500);
     echo json_encode([
@@ -64,7 +61,8 @@ try {
     exit;
 }
 
-    switch ($action) {
+// ✅ เรียกฟังก์ชันตาม action
+switch ($action) {
     case 'getUsers':
     case 'getall':
         getUsers($pdo);
@@ -94,33 +92,21 @@ try {
         createUser($pdo);
         break;
 
-    case 'createUserWithAutoId':
-    case 'createauto':
-        createUserWithAutoId($pdo);
-        break;
-
-    case 'findUserByUserId':
-    case 'finduser':
-        findUserByUserId($pdo);
-        break;
-
     case 'updateUser':
     case 'update':
         updateUser($pdo);
         break;
 
-    case 'deleteUser':
     case 'delete':
+    case 'deleteUser':
         deleteUser($pdo);
         break;
 
     case 'updateUserStatus':
-    case 'updatestatus':
         updateUserStatus($pdo);
         break;
 
     case 'saveUser':
-    case 'save':
         saveUser($pdo);
         break;
 
@@ -142,10 +128,8 @@ function getUsers($pdo) {
         $department = $_GET['department'] ?? '';
         $position = $_GET['position'] ?? '';
         
-        $sql = "SELECT
+        $sql = "SELECT 
                     id,
-                    username,
-                    password,
                     user_id,
                     fname,
                     lname,
@@ -162,20 +146,18 @@ function getUsers($pdo) {
                     name_db,
                     status,
                     zone,
-                    token,
-                    Roleuser,
-                    permissions
-                FROM tb_user
+                    token
+                FROM tb_user 
                 WHERE 1=1";
-
+        
         $params = [];
-
+        
         // Add search filter
         if (!empty($search)) {
-            $sql .= " AND (fname LIKE :search
-                         OR lname LIKE :search
+            $sql .= " AND (fname LIKE :search 
+                         OR lname LIKE :search 
                          OR fnameth LIKE :search
-                         OR lnameth LIKE :search
+                         OR lnameth LIKE :search 
                          OR department LIKE :search
                          OR position LIKE :search
                          OR email LIKE :search)";
@@ -204,11 +186,11 @@ function getUsers($pdo) {
         }
         
         $sql .= " ORDER BY user_id DESC";
-
+        
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         $users = $stmt->fetchAll();
-
+        
         echo json_encode($users);
         
     } catch (PDOException $e) {
@@ -293,26 +275,24 @@ function getUserByToken($pdo) {
             return;
         }
         
-        $stmt = $pdo->prepare("SELECT
-                                user_id,
-                                fname,
-                                lname,
-                                fnameth,
-                                lnameth,
-                                department,
-                                position,
-                                tel,
-                                email,
-                                level,
-                                server_db,
-                                username_db,
-                                password_db,
-                                name_db,
-                                status,
-                                zone,
-                                Roleuser,
-                                permissions
-                              FROM tb_user
+        $stmt = $pdo->prepare("SELECT 
+                                user_id, 
+                                fname, 
+                                lname, 
+                                fnameth, 
+                                lnameth, 
+                                department, 
+                                position, 
+                                tel, 
+                                email, 
+                                level, 
+                                server_db, 
+                                username_db, 
+                                password_db, 
+                                name_db, 
+                                status, 
+                                zone 
+                              FROM tb_user 
                               WHERE token = :token");
         $stmt->execute([':token' => $token]);
         $user = $stmt->fetch();
@@ -403,6 +383,18 @@ function createUser($pdo) {
     try {
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
 
+        // $required_fields = ['fname', 'lname', 'department', 'position'];
+        // foreach ($required_fields as $field) {
+        //     if (empty($input[$field])) {
+        //         http_response_code(400);
+        //         echo json_encode([
+        //             'success' => false,
+        //             'message' => "Field '$field' is required"
+        //         ]);
+        //         return;
+        //     }
+        // }
+
         // Generate token if not provided
         if (empty($input['token'])) {
             $input['token'] = bin2hex(random_bytes(16));
@@ -422,14 +414,10 @@ function createUser($pdo) {
                 ? $input['status']
                 : 'activation'; // default to 'activation'
 
-        // แก้ไข: ตรวจสอบให้แน่ใจว่าจำนวนพารามิเตอร์ใน SQL ตรงกับจำนวนที่ส่งใน execute
-        // เพิ่มคอลัมน์ permissions เข้าไปใน INSERT statement
         $stmt = $pdo->prepare("INSERT INTO tb_user 
-            (user_id,username,password,fname, lname, fnameth, lnameth, tel, email,department,
-            position, level, server_db, username_db,name_db, password_db, status, zone, token, Roleuser, permissions )
-        VALUES 
-            (:user_id,:username,:password,:fname, :lname, :fnameth, :lnameth, :tel, :email, :department,
-            :position,  :level, :server_db, :username_db,:name_db, :password_db, :status, :zone, :token, :Roleuser, :permissions )");
+            (user_id,username,password,fname, lname, fnameth, lnameth, tel, email,department,position, level, server_db, username_db,name_db, status, zone, token ) 
+            VALUES 
+            (:user_id,:username,:password,:fname, :lname, :fnameth, :lnameth, :tel, :email, :department,:position,  :level, :server_db, :username_db,:name_db, :status, :zone, :token)");
 
         $stmt->execute([
             ':user_id' => trim($input['user_id'] ?? ''),
@@ -437,8 +425,6 @@ function createUser($pdo) {
             ':lname' => trim($input['lname'] ?? ''),
             ':fnameth' => trim($input['fnameth'] ?? ''),
             ':lnameth' => trim($input['lnameth'] ?? ''),
-            ':department' => trim($input['department'] ?? ''),
-            ':position' => trim($input['position'] ?? ''),
             ':tel' => trim($input['tel'] ?? ''),
             ':email' => trim($input['email'] ?? ''),
             ':department' => trim($input['department'] ?? ''),
@@ -449,12 +435,9 @@ function createUser($pdo) {
             ':password' => trim($input['password'] ?? ''),
             ':username_db' => trim($input['username_db'] ?? ''),
             ':name_db' => trim($input['name_db'] ?? ''),
-            ':password_db' => trim($input['password_db'] ?? ''),
             ':status' => $status,
             ':zone' => trim($input['zone'] ?? ''),
-            ':token' => $input['token'],
-            ':Roleuser' => trim($input['Roleuser'] ?? ''),
-            ':permissions' => trim($input['permissions'] ?? '') // ตรวจสอบให้แน่ใจว่าพารามิเตอร์นี้ถูกต้อง
+            ':token' => $input['token']
         ]);
 
         echo json_encode([
@@ -472,60 +455,83 @@ function createUser($pdo) {
         ]);
     }
 }
-
-
-// Function to update user
 function updateUser($pdo) {
     try {
         // Handle both JSON input and GET parameters for backward compatibility
-        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-
-        if (!isset($input['id']) || empty($input['id'])) {
+        $input = json_decode(file_get_contents('php://input'), true);
+        
+        if (!$input) {
+            // Handle GET parameters (legacy support)
+            $input = [
+                'id' => $_GET['id'] ?? '',
+                'fname' => $_GET['fname'] ?? '',
+                'lname' => $_GET['lname'] ?? '',
+                'fnameth' => $_GET['fnameth'] ?? '',
+                'lnameth' => $_GET['lnameth'] ?? '',
+                'department' => $_GET['department'] ?? '',
+                'position' => $_GET['position'] ?? '',
+                'tel' => $_GET['tel'] ?? '',
+                'email' => $_GET['email'] ?? '',
+                'level' => $_GET['level'] ?? '',
+                'server_db' => $_GET['server_db'] ?? '',
+                'username_db' => $_GET['username_db'] ?? '',
+                'password_db' => $_GET['password_db'] ?? '',
+                'name_db' => $_GET['name_db'] ?? '',
+                'status' => $_GET['status'] ?? '',
+                'zone' => $_GET['zone'] ?? '',
+                'token' => $_GET['token'] ?? ''
+            ];
+            $update_by_token = true;
+        } else {
+            $update_by_token = false;
+        }
+        
+        // Determine update criteria
+        if ($update_by_token && !empty($input['token'])) {
+            $where_field = 'token';
+            $where_value = $input['token'];
+        } elseif (isset($input['id']) && $input['id'] !== '') {
+            $where_field = 'id'; // ✅ ใช้ id เป็น primary key
+            $where_value = $input['id'];
+        } else {
             http_response_code(400);
             echo json_encode([
                 'success' => false,
-                'message' => 'User ID is required for update'
+                'message' => 'User ID or token is required'
             ]);
             return;
         }
-
-        // Validate ENUM values
-        $validLevels = ['user', 'admin'];
-        $validStatuses = ['activation', '0'];
-
-        // Clean and validate level
-        $level = isset($input['level']) && in_array($input['level'], $validLevels) ? $input['level'] : null;
-        // Clean and validate status
-        $status = isset($input['status']) && in_array($input['status'], $validStatuses) ? $input['status'] : null;
-
-        $sql = "UPDATE tb_user SET ";
-        $params = [':id' => $input['id']];
-        $fields = [];
-
-        if (isset($input['username'])) { $fields[] = "username = :username"; $params[':username'] = trim($input['username']); }
-        if (isset($input['password'])) { $fields[] = "password = :password"; $params[':password'] = trim($input['password']); }
-        if (isset($input['fname'])) { $fields[] = "fname = :fname"; $params[':fname'] = trim($input['fname']); }
-        if (isset($input['lname'])) { $fields[] = "lname = :lname"; $params[':lname'] = trim($input['lname']); }
-        if (isset($input['fnameth'])) { $fields[] = "fnameth = :fnameth"; $params[':fnameth'] = trim($input['fnameth']); }
-        if (isset($input['lnameth'])) { $fields[] = "lnameth = :lnameth"; $params[':lnameth'] = trim($input['lnameth']); }
-        if (isset($input['tel'])) { $fields[] = "tel = :tel"; $params[':tel'] = trim($input['tel']); }
-        if (isset($input['email'])) { $fields[] = "email = :email"; $params[':email'] = trim($input['email']); }
-        if (isset($input['department'])) { $fields[] = "department = :department"; $params[':department'] = trim($input['department']); }
-        if (isset($input['position'])) { $fields[] = "position = :position"; $params[':position'] = trim($input['position']); }
-        if ($level !== null) { $fields[] = "level = :level"; $params[':level'] = $level; }
-        if (isset($input['server_db'])) { $fields[] = "server_db = :server_db"; $params[':server_db'] = trim($input['server_db']); }
-        if (isset($input['username_db'])) { $fields[] = "username_db = :username_db"; $params[':username_db'] = trim($input['username_db']); }
-        if (isset($input['name_db'])) { $fields[] = "name_db = :name_db"; $params[':name_db'] = trim($input['name_db']); }
-        if ($status !== null) { $fields[] = "status = :status"; $params[':status'] = $status; }
-        if (isset($input['zone'])) { $fields[] = "zone = :zone"; $params[':zone'] = trim($input['zone']); }
-        if (isset($input['token'])) { $fields[] = "token = :token"; $params[':token'] = $input['token']; }
-        if (isset($input['Roleuser'])) { // Added Roleuser update
-            $fields[] = "Roleuser = :Roleuser";
-            $params[':Roleuser'] = trim($input['Roleuser']);
+        
+        // Check if user exists
+        $stmt = $pdo->prepare("SELECT id FROM tb_user WHERE $where_field = :value");
+        $stmt->execute([':value' => $where_value]);
+        if (!$stmt->fetch()) {
+            http_response_code(404);
+            echo json_encode([
+                'success' => false,
+                'message' => 'User not found'
+            ]);
+            return;
         }
-
-
-        if (empty($fields)) {
+        
+        // Build update query dynamically
+        $update_fields = [];
+        $params = [':where_value' => $where_value];
+        
+        $allowed_fields = [
+            'fname', 'lname', 'fnameth', 'lnameth', 'department', 
+            'position', 'tel', 'email', 'level', 'server_db','password', 
+            'username_db', 'password_db', 'name_db', 'status', 'zone'
+        ];
+        
+        foreach ($allowed_fields as $field) {
+            if (isset($input[$field]) && $input[$field] !== '') {
+                $update_fields[] = "$field = :$field";
+                $params[":$field"] = $input[$field];
+            }
+        }
+        
+        if (empty($update_fields)) {
             http_response_code(400);
             echo json_encode([
                 'success' => false,
@@ -534,21 +540,16 @@ function updateUser($pdo) {
             return;
         }
         
-       $sql .= implode(", ", $fields) . " WHERE id = :id";
-
+        $sql = "UPDATE tb_user SET " . implode(', ', $update_fields) . " WHERE $where_field = :where_value";
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
-
-        if ($stmt->rowCount() > 0) {
+        
+        if ($update_by_token) {
+            echo json_encode("ok"); // Legacy response format
+        } else {
             echo json_encode([
                 'success' => true,
                 'message' => 'User updated successfully'
-            ]);
-        } else {
-            http_response_code(404);
-            echo json_encode([
-                'success' => false,
-                'message' => 'User not found or no changes made'
             ]);
         }
         
@@ -560,182 +561,94 @@ function updateUser($pdo) {
         ]);
     }
 }
-// Function to delete user
+
+// Function to update user
+
+
 function deleteUser($pdo) {
     try {
-        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-        $id = $input['id'] ?? 0;
+        // Log สำหรับ debug
+        error_log("Delete function called");
+        error_log("Request method: " . $_SERVER['REQUEST_METHOD']);
         
-        if (empty($id)) {
-            http_response_code(400);
-            echo json_encode([
-                'success' => false,
-                'status' => 'error',
-                'message' => 'User ID is required for deletion'
-            ]);
-            return;
-        }
-
-        $stmt = $pdo->prepare("DELETE FROM tb_user WHERE id = :id");
-        $stmt->execute([':id' => $id]);
-
-        if ($stmt->rowCount() > 0) {
-            echo json_encode([
-                'success' => true,
-                'message' => 'User deleted successfully'
-            ]);
-        } else {
-            http_response_code(404);
-            echo json_encode([
-                'success' => false,
-                'message' => 'User not found'
-            ]);
-        }
-        
-    } catch (PDOException $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Error deleting user: ' . $e->getMessage()
-        ]);
-    }
-}
-// Function to update user status only
-function updateUserStatus($pdo) {
-    try {
+        // รับข้อมูลจาก JSON body
         $input = json_decode(file_get_contents('php://input'), true);
-        $id = $input['id'] ?? 0;
-        $status = $input['status'] ?? '';
-
-        if (empty($id) || empty($status)) {
-            http_response_code(400);
-            echo json_encode([
-                'success' => false,
-                'message' => 'User ID and status are required'
-            ]);
-            return;
-        }
+        error_log("Input data: " . print_r($input, true));
         
-        $validStatuses = ['active', 'inactive', 'suspended', 'pending', 'activation'];
-        if (!in_array($status, $validStatuses)) {
-            http_response_code(400);
-            echo json_encode([
-                'success' => false,
-                'message' => 'Invalid status value'
-            ]);
-            return;
-        }
-
-        $stmt = $pdo->prepare("UPDATE tb_user SET status = :status WHERE id = :id");
-        $stmt->execute([':status' => $status, ':id' => $id]);
-        
-        if ($stmt->rowCount() > 0) {
-            echo json_encode([
-                'success' => true,
-                'message' => 'User status updated successfully'
-            ]);
+        // รับ user_id จาก input
+        if (!$input) {
+            error_log("No JSON input, trying GET parameters");
+            $id = $_GET['$id'];
         } else {
+            $id = $input['id'];
+        }
+        
+        error_log("User ID to delete: " . $id);
+        
+        // ตรวจสอบว่า user_id ไม่ว่าง
+        if (empty($id)) {
+            error_log("User ID is empty");
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'กรุณาระบุ User ID ที่ต้องการลบ'
+            ]);
+            return;
+        }
+
+        // ตรวจสอบว่าผู้ใช้มีอยู่จริงหรือไม่
+        $stmtCheck = $pdo->prepare("SELECT id FROM tb_user WHERE id = :id");
+        $stmtCheck->execute([':id' => $id]);
+        $user = $stmtCheck->fetch();
+        
+        error_log("User found: " . print_r($user, true));
+
+        if (!$user) {
+            error_log("User not found");
             http_response_code(404);
             echo json_encode([
                 'success' => false,
-                'message' => 'User not found'
+                'message' => 'ไม่พบผู้ใช้ที่มี User ID นี้ในระบบ'
+            ]);
+            return;
+        }
+
+        // ลบผู้ใช้
+        $stmtDelete = $pdo->prepare("DELETE FROM tb_user WHERE id = :id");
+        $deleteResult = $stmtDelete->execute([':id' => $id]);
+        
+        error_log("Delete result: " . ($deleteResult ? 'success' : 'failed'));
+        error_log("Rows affected: " . $stmtDelete->rowCount());
+
+        if ($stmtDelete->rowCount() > 0) {
+            echo json_encode([
+                'success' => true,
+                'message' => "ลบผู้ใช้ที่มี User ID '$id' สำเร็จ"
+            ]);
+        } else {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'ไม่สามารถลบผู้ใช้ได้'
             ]);
         }
-        
+
     } catch (PDOException $e) {
+        error_log("PDO Error: " . $e->getMessage());
         http_response_code(500);
         echo json_encode([
             'success' => false,
-            'message' => 'Error updating user status: ' . $e->getMessage()
+            'message' => 'เกิดข้อผิดพลาดในการลบผู้ใช้: ' . $e->getMessage()
+        ]);
+    } catch (Exception $e) {
+        error_log("General Error: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()
         ]);
     }
-
-
 }
 
-// Helper function to generate a unique user ID
-function createUniqueUserId($pdo, $department, $position) {
-    try {
-        $deptCode = strtoupper(substr($department, 0, 3));
-        $posCode = strtoupper(substr($position, 0, 3));
 
-        $sql = "SELECT user_id FROM tb_user WHERE department = :department AND position = :position ORDER BY user_id DESC LIMIT 1";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([':department' => $department, ':position' => $position]);
-        $lastUserId = $stmt->fetchColumn();
-
-        $nextNumber = 1;
-        if ($lastUserId) {
-            preg_match('/(\d+)$/', $lastUserId, $matches);
-            if (isset($matches[1])) {
-                $nextNumber = (int)$matches[1] + 1;
-            } else {
-                $nextNumber = 1;
-            }
-        } else {
-            $nextNumber = 1;
-        }
-
-        return $deptCode . '/' . $posCode . '/' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
-
-    } catch (Exception $e) {
-        return null;
-    }
-}
-
-// ตัวอย่างการใช้งานในฟังก์ชัน createUser
-function createUserWithAutoId($pdo, $userData) {
-    try {
-        // สร้าง User ID อัตโนมัติหากไม่ได้ระบุมา
-        if (empty($userData['user_id'])) {
-            $userData['user_id'] = createUniqueUserId(
-                $pdo,
-                $userData['department'] ?? '',
-                $userData['position'] ?? ''
-            );
-        }
-
-        // ตรวจสอบว่า User ID ไม่ซ้ำ
-        if (isUserIdExists($pdo, $userData['user_id'])) {
-            throw new Exception('User ID นี้มีในระบบแล้ว');
-        }
-
-        // ตรวจสอบรูปแบบ User ID
-        if (!validateUserIdFormat($userData['user_id'])) {
-            throw new Exception('รูปแบบ User ID ไม่ถูกต้อง');
-        }
-
-        return $userData;
-
-    } catch (Exception $e) {
-        throw new Exception('Error in createUserWithAutoId: ' . $e->getMessage());
-    }
-}
-
-// ฟังก์ชันค้นหา User จาก User ID
-function findUserByUserId($pdo, $userId) {
-    try {
-        $stmt = $pdo->prepare("SELECT * FROM tb_user WHERE user_id = :user_id");
-        $stmt->execute([':user_id' => $userId]);
-        return $stmt->fetch();
-    } catch (Exception $e) {
-        throw new Exception('Error in findUserByUserId: ' . $e->getMessage());
-    }
-}
-
-// ฟังก์ชันตรวจสอบว่า User ID มีอยู่ในระบบแล้วหรือยัง
-function isUserIdExists($pdo, $userId) {
-    try {
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM tb_user WHERE user_id = :user_id");
-        $stmt->execute([':user_id' => $userId]);
-        return $stmt->fetchColumn() > 0;
-    } catch (Exception $e) {
-        throw new Exception('Error in isUserIdExists: ' . $e->getMessage());
-    }
-}
-
-// ฟังก์ชันตรวจสอบรูปแบบ User ID
-function validateUserIdFormat($userId) {
-    return preg_match('/^[A-Z]{3}\/[A-Z]{3}\/\d{4}$/', $userId);
-}
 ?>

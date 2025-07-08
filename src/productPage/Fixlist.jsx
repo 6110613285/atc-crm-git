@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FormControl, Button, Table, Card, Badge, Container, Modal, Form, Row, Col } from "react-bootstrap";
 import PaginationComponent from "../components/PaginationComponent";
+import FixlistModal from "./FixlistModal";
 import Swal from "sweetalert2";
 import {
   Search,
@@ -22,12 +23,18 @@ function FixListPage() {
   const [currentPageData, setCurrentPageData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
-  
+
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [validated, setValidated] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [showItemDetail, setShowItemDetail] = useState(false);
+  const [selectedItemDetail, setSelectedItemDetail] = useState({ fixID: "", customer: "" });
+  const [sortConfig, setSortConfig] = useState({ key: '', direction: 'ascending' });
+  const [filteredData, setFilteredData] = useState([]);
+
+
 
   const itemsPerPage = 15;
 
@@ -55,9 +62,11 @@ function FixListPage() {
       const data = await response.json();
       if (Array.isArray(data)) {
         setFixList(data);
+        setFilteredData(data);
         paginate(1, data);
       } else {
         setFixList([]);
+        setFilteredData();
         setCurrentPageData([]);
       }
     } catch (error) {
@@ -76,10 +85,70 @@ function FixListPage() {
     }
   };
 
+  const handleFixIdClick = (fixID) => {
+    setSelectedItemDetail({ fixID });
+    setShowItemDetail(true);
+  };
+  const handleSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+
+    const sortedData = [...filteredData].sort((a, b) => {
+      let aValue = a[key];
+      let bValue = b[key];
+
+      if (key === 'stock_qty') {
+        aValue = a.stock_qty ?? a.qty ?? 0;
+        bValue = b.stock_qty ?? b.qty ?? 0;
+      }
+
+
+      if (key === 'date') {
+        return direction === 'ascending'
+          ? new Date(aValue) - new Date(bValue)
+          : new Date(bValue) - new Date(aValue);
+      }
+
+      const aNum = parseFloat(aValue);
+      const bNum = parseFloat(bValue);
+      const bothNumbers = !isNaN(aNum) && !isNaN(bNum);
+
+      if (bothNumbers) {
+        return direction === 'ascending' ? aNum - bNum : bNum - aNum;
+      } else {
+        const aStr = (aValue || '').toString().toLowerCase();
+        const bStr = (bValue || '').toString().toLowerCase();
+        if (aStr < bStr) return direction === 'ascending' ? -1 : 1;
+        if (aStr > bStr) return direction === 'ascending' ? 1 : -1;
+        return 0;
+      }
+    });
+
+    setFilteredData(sortedData);
+    paginate(1, sortedData);
+  };
+
+  const getSortIcon = (columnKey) => {
+    if (sortConfig.key !== columnKey) {
+      return (
+        <span style={{ color: "#888" }}>△</span>
+      );
+    }
+    return sortConfig.direction === 'ascending' ? (
+      <span style={{ color: "#00e676" }}>▲</span>
+    ) : (
+      <span style={{ color: "#00e676" }}>▼</span>
+    );
+  };
+
+
   // ฟังก์ชันค้นหา
   const handleSearch = async () => {
     const searchTerm = searchRef.current.value.toLowerCase().trim();
-    
+
     if (!searchTerm) {
       await fetchFixList();
       return;
@@ -121,10 +190,10 @@ function FixListPage() {
   };
 
   // ฟังก์ชันลบข้อมูล
-  const handleDelete = async (id) => {
+  const handleDelete = async (fixID) => {
     const result = await Swal.fire({
       title: 'คุณแน่ใจหรือไม่?',
-      text: "คุณต้องการลบข้อมูลนี้หรือไม่?",
+      text: "คุณต้องการลบข้อมูลทั้งหมดของ FixID นี้หรือไม่?",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#e53935',
@@ -136,11 +205,11 @@ function FixListPage() {
     if (result.isConfirmed) {
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_SERVER}/Store.php?action=deleteFixItem&id=${id}`,
+          `${import.meta.env.VITE_SERVER}/Store.php?action=deleteFixItem&fixID=${fixID}`,
           { method: "DELETE" }
         );
         const data = await response.json();
-        
+
         if (data.status === "success") {
           Swal.fire({
             position: "center",
@@ -172,6 +241,7 @@ function FixListPage() {
       }
     }
   };
+
 
   // ฟังก์ชันสร้าง Fix ID อัตโนมัติ
   const generateFixId = async () => {
@@ -205,17 +275,17 @@ function FixListPage() {
   const handleAdd = async () => {
     setEditingItem(null);
     setShowAddModal(true);
-    
+
     // กำหนดค่าเริ่มต้น
     setTimeout(async () => {
       // ตั้งวันที่เป็นวันปัจจุบัน
       const today = new Date();
       const todayString = today.toISOString().split('T')[0];
-      
+
       if (dateRef.current) {
         dateRef.current.value = todayString;
       }
-      
+
       // สร้าง Fix ID อัตโนมัติ
       const fixId = await generateFixId();
       if (fixId && fixIdRef.current) {
@@ -228,12 +298,17 @@ function FixListPage() {
   const handleEdit = (item) => {
     setEditingItem(item);
     setShowEditModal(true);
-    
-    // กำหนดค่าเริ่มต้นในฟอร์ม
-    setTimeout(() => {
-      if (statusRef.current) statusRef.current.value = item.Status || '';
-      if (locationRef.current) locationRef.current.value = item.Location || '';
-      if (dateRef.current) dateRef.current.value = item.date || '';
+
+
+    setTimeout(async () => {
+      // ตั้งวันที่เป็นวันปัจจุบัน
+      const today = new Date();
+      const todayString = today.toISOString().split('T')[0];
+      if (dateRef.current) dateRef.current.value = todayString;
+
+
+
+
       if (fixIdRef.current) fixIdRef.current.value = item.fixID || '';
       if (modalRef.current) modalRef.current.value = item.Modal || '';
       if (cpuRef.current) cpuRef.current.value = item.Cpu || '';
@@ -278,18 +353,18 @@ function FixListPage() {
 
     try {
       const action = editingItem ? 'updateFixItem' : 'addFixItem';
-      const url = editingItem 
-        ? `${import.meta.env.VITE_SERVER}/Store.php?action=${action}&id=${formData.fixID}`
+      const url = editingItem
+        ? `${import.meta.env.VITE_SERVER}/Store.php?action=${action}&id=${editingItem.id}`
         : `${import.meta.env.VITE_SERVER}/Store.php?action=${action}`;
 
       const queryParams = new URLSearchParams(formData).toString();
-      
+
       const response = await fetch(`${url}&${queryParams}`, {
         method: "POST",
       });
-      
+
       const data = await response.json();
-      
+
       if (data === "ok" || data.status === "success") {
         Swal.fire({
           position: "center",
@@ -298,7 +373,7 @@ function FixListPage() {
           showConfirmButton: false,
           timer: 1500,
         });
-        
+
         setShowAddModal(false);
         setShowEditModal(false);
         setEditingItem(null);
@@ -329,16 +404,16 @@ function FixListPage() {
   const resetForm = () => {
     const refs = [
       statusRef, locationRef, dateRef, fixIdRef, modalRef, cpuRef,
-      mainboardRef, snRef, customerRef, symptomRef, didRef, 
+      mainboardRef, snRef, customerRef, symptomRef, didRef,
       equipinsiteRef, senderRef, receiverRef
     ];
-    
+
     refs.forEach(ref => {
       if (ref.current) {
         ref.current.value = '';
       }
     });
-    
+
     setValidated(false);
   };
 
@@ -369,9 +444,9 @@ function FixListPage() {
       'completed': { bg: 'success', text: 'Completed' },
       'cancelled': { bg: 'danger', text: 'Cancelled' }
     };
-    
+
     const config = statusConfig[status?.toLowerCase()] || { bg: 'secondary', text: status || 'N/A' };
-    
+
     return (
       <Badge bg={config.bg} style={{
         fontWeight: "500",
@@ -482,14 +557,70 @@ function FixListPage() {
                   <thead style={{ backgroundColor: "#333333" }}>
                     <tr className="text-center">
                       <th className="py-3" style={{ color: "#e0e0e0" }}>No.</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>Status</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>Location</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>Date</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>Fix ID</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>Model</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>CPU</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>Serial Number</th>
-                      <th className="py-3" style={{ color: "#e0e0e0" }}>Customer</th>
+                      <th
+                        className="py-3"
+                        style={{ color: "#e0e0e0", cursor: "pointer" }}
+                        onClick={() => handleSort('fixID')}
+                      >
+                        Fix ID {getSortIcon('fixID')}
+                      </th>
+
+                      <th
+                        className="py-3"
+                        style={{ color: "#e0e0e0", cursor: "pointer" }}
+                        onClick={() => handleSort('Location')}
+                      >
+                        Location {getSortIcon('Location')}
+                      </th>
+
+                      <th
+                        className="py-3"
+                        style={{ color: "#e0e0e0", cursor: "pointer" }}
+                        onClick={() => handleSort('date')}
+                      >
+                        Date {getSortIcon('date')}
+                      </th>
+
+                      <th
+                        className="py-3"
+                        style={{ color: "#e0e0e0" }}
+
+                      >
+                        Status
+                      </th>
+
+
+                      <th
+                        className="py-3"
+                        style={{ color: "#e0e0e0", cursor: "pointer" }}
+                        onClick={() => handleSort('Modal')}
+                      >
+                        Model {getSortIcon('Modal')}
+                      </th>
+
+                      <th
+                        className="py-3"
+                        style={{ color: "#e0e0e0", cursor: "pointer" }}
+                        onClick={() => handleSort('Cpu')}
+                      >
+                        CPU {getSortIcon('Cpu')}
+                      </th>
+
+                      <th
+                        className="py-3"
+                        style={{ color: "#e0e0e0", cursor: "pointer" }}
+                        onClick={() => handleSort('SN')}
+                      >
+                        Serial Number {getSortIcon('SN')}
+                      </th>
+
+                      <th
+                        className="py-3"
+                        style={{ color: "#e0e0e0", cursor: "pointer" }}
+
+                      >
+                        Customer
+                      </th>
                       <th className="py-3" style={{ color: "#e0e0e0" }}>Action</th>
                     </tr>
                   </thead>
@@ -518,41 +649,64 @@ function FixListPage() {
                     ) : (
                       currentPageData.map((item, index) => (
                         <tr key={item.id || index} className="text-center text-white">
+                          {/* No. */}
                           <td>{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                          <td>{getStatusBadge(item.Status)}</td>
+
+                          {/* Fix ID */}
+                          <td>
+                            <Button
+                              variant="link"
+                              className="p-0 text-white text-decoration-none"
+                              onClick={() => handleFixIdClick(item.fixID)}
+                            >
+                              <Badge bg="dark" text="light" style={{
+                                fontWeight: "medium",
+                                backgroundColor: "#424242",
+                                padding: "6px 8px",
+                                borderRadius: "4px"
+                              }}>
+                                {item.fixID || '-'}
+                              </Badge>
+                            </Button>
+                          </td>
+
+                          {/* Location */}
                           <td>
                             <div className="d-flex align-items-center justify-content-center">
                               <GeoAltFill size={14} className="me-1 text-secondary" />
                               {item.Location || '-'}
                             </div>
                           </td>
+
+                          {/* Date */}
                           <td>
                             <small className="text-muted d-flex align-items-center justify-content-center">
                               <CalendarDate size={12} className="me-1" />
                               {formatDate(item.date)}
                             </small>
                           </td>
-                          <td>
-                            <Badge bg="dark" text="light" style={{
-                              fontWeight: "medium",
-                              backgroundColor: "#424242",
-                              padding: "6px 8px",
-                              borderRadius: "4px"
-                            }}>
-                              {item.fixID || '-'}
-                            </Badge>
-                          </td>
+
+                          {/* Status */}
+                          <td>{getStatusBadge(item.Status)}</td>
+
+                          {/* Model */}
                           <td className="fw-medium text-white">
                             <Display className="me-2 text-success" size={14} />
                             {item.Modal || '-'}
                           </td>
+
+                          {/* CPU */}
                           <td>
                             <div className="d-flex align-items-center justify-content-center">
                               <Cpu size={14} className="me-1 text-info" />
                               {item.Cpu || '-'}
                             </div>
                           </td>
+
+                          {/* Serial Number */}
                           <td>{item.SN || '-'}</td>
+
+                          {/* Customer */}
                           <td>
                             <div className="d-flex align-items-center justify-content-center">
                               <PersonFill size={14} className="me-1 text-info" />
@@ -581,7 +735,7 @@ function FixListPage() {
                                   backgroundColor: "#e53935",
                                   borderColor: "#e53935"
                                 }}
-                                onClick={() => handleDelete(item.id)}
+                                onClick={() => handleDelete(item.fixID)}
                               >
                                 <Trash size={16} />
                               </Button>
@@ -636,7 +790,7 @@ function FixListPage() {
               <XCircle />
             </Button>
           </Modal.Header>
-          
+
           <Modal.Body className="bg-dark text-light">
             <Row className="mb-3">
               <Form.Group as={Col} md="6" className="mb-3">
@@ -690,23 +844,23 @@ function FixListPage() {
                   type="date"
                   ref={dateRef}
                   required
-                  readOnly={!editingItem} // อ่านอย่างเดียวสำหรับการเพิ่มใหม่
+                  readOnly // ✅ ห้ามแก้ไขตลอด
+                  defaultValue={new Date().toISOString().split('T')[0]}
                   style={{
                     backgroundColor: "#333",
                     color: "#fff",
                     border: "1px solid #444",
-                    cursor: !editingItem ? "not-allowed" : "text"
+                    cursor: "not-allowed"
                   }}
                 />
                 <Form.Control.Feedback type="invalid">
                   <b>กรุณาเลือกวันที่</b>
                 </Form.Control.Feedback>
-                {!editingItem && (
-                  <Form.Text className="text-muted">
-                    วันที่จะถูกตั้งเป็นวันปัจจุบันอัตโนมัติ
-                  </Form.Text>
-                )}
+                <Form.Text className="text-muted">
+                  วันที่จะถูกตั้งเป็นวันปัจจุบันอัตโนมัติ
+                </Form.Text>
               </Form.Group>
+
 
               <Form.Group as={Col} md="6" className="mb-3">
                 <Form.Label><b>Fix ID *</b></Form.Label>
@@ -864,7 +1018,7 @@ function FixListPage() {
               </Form.Group>
             </Row>
           </Modal.Body>
-          
+
           <Modal.Footer className="bg-dark text-light" style={{ borderTop: "1px solid #444" }}>
             <Button
               variant="secondary"
@@ -899,6 +1053,14 @@ function FixListPage() {
           </Modal.Footer>
         </Form>
       </Modal>
+
+
+      <FixlistModal
+        show={showItemDetail}
+        onHide={() => setShowItemDetail(false)}
+        fixID={selectedItemDetail.fixID}
+        customer={selectedItemDetail.customer}
+      />
     </div>
   );
 }

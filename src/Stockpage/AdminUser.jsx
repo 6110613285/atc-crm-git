@@ -157,18 +157,16 @@ function Usertable() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // สถานะสำหรับการแบ่งหน้า
   const [currentUserPageData, setCurrentUserPageData] = useState([]);
   const [currentUserPage, setCurrentUserPage] = useState(1);
   const itemsPerPage = 15;
 
-  // สถานะสำหรับการกรอง
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedLevel, setSelectedLevel] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedPosition, setSelectedPosition] = useState("");
 
-    const updateUserPermissions = async (userId, newPermissionsAsNames) => {
+  const updateUserPermissions = async (userId, newPermissionsAsNames) => {
     try {
       // Convert permission names back to codes for saving
       const newPermissionsAsCodes = getPermissionCodes(newPermissionsAsNames).join(',');
@@ -219,7 +217,6 @@ function Usertable() {
         { method: "GET" }
       );
       const data = await res.json();
-      
       if (Array.isArray(data)) {
         setUsers(data);
       } else if (data === null) {
@@ -236,35 +233,42 @@ function Usertable() {
     }
   };
 
-  // ค้นหา users
   const searchUsers = async () => {
-    setLoading(true);
-    try {
-      const searchTerm = searchRef.current.value || "";
-      const res = await fetch(
-        `${import.meta.env.VITE_SERVER}/User.php?action=search&search=${searchTerm}`,
-        {
-          method: "GET",
-        }
-      );
-      const data = await res.json();
-      
-      if (Array.isArray(data)) {
-        setUsers(data);
-      } else if (data === null) {
-        setUsers([]);
-      } else {
-        setUsers([]);
-      }
-    } catch (err) {
-      console.log(err);
-      setUsers([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  setLoading(true);
+  try {
+    const searchTerm = searchRef.current.value.trim();
 
-const deleteUser = async (id) => {
+    if (!searchTerm) {
+      setUsers([]);
+      setLoading(false);
+      return;
+    }
+
+    const res = await fetch(`${import.meta.env.VITE_SERVER}/User.php?action=searchUser`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ search: searchTerm }),
+    });
+
+    const data = await res.json();
+
+    if (Array.isArray(data)) {
+      setUsers(data);
+    } else {
+      setUsers([]);
+    }
+  } catch (error) {
+    console.error(error);
+    setUsers([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+  const deleteUser = async (id) => {
     if (!hasPageAccess('adminuser') || currentUser?.level !== 'admin') {
       Swal.fire({
         position: "center",
@@ -443,22 +447,18 @@ const deleteUser = async (id) => {
     setCurrentUserPage(pageNumber);
   };
 
-  // ดึงข้อมูลเมื่อโหลดคอมโพเนนต์
   useEffect(() => {
     getUsers();
   }, []);
 
-  // อัปเดตข้อมูลหน้าเมื่อข้อมูล users เปลี่ยนแปลง
   useEffect(() => {
     paginateUsers(currentUserPage);
   }, [users]);
 
-  // ฟังก์ชันจัดการการบันทึก
   const handleSave = () => {
     getUsers();
   };
 
-  // ฟังก์ชันจัดการการกดปุ่ม Enter
   const handleKeyPress = (event) => {
     if (event.key === 'Enter') {
       searchUsers();
@@ -466,7 +466,7 @@ const deleteUser = async (id) => {
     }
   };
 
-const getLevelBadgeColor = (level) => {
+  const getLevelBadgeColor = (level) => {
     return ROLE_PERMISSIONS[level?.toLowerCase()]?.color || "#757575";
   };
 
@@ -489,6 +489,8 @@ const getLevelBadgeColor = (level) => {
     return colors[status?.toLowerCase()] || colors.pending;
   };
 
+
+
   if (loading) {
     return (
       <div className="min-vh-100 d-flex align-items-center justify-content-center" style={{
@@ -506,7 +508,7 @@ const getLevelBadgeColor = (level) => {
 
   if (error) {
     return (
-      <div className="min-vh-100 d-flex align-items-center justify-content-center" style={{ 
+      <div className="min-vh-100 d-flex align-items-center justify-content-center" style={{
         fontFamily: "'Inter', 'Prompt', sans-serif",
         backgroundColor: "#1a1a1a",
         color: "#e0e0e0"
@@ -517,8 +519,8 @@ const getLevelBadgeColor = (level) => {
             <h4 className="mb-3">เกิดข้อผิดพลาด</h4>
             <p className="mb-4" style={{ color: "#bdbdbd" }}>{error}</p>
             <Button
-              style={{ 
-                backgroundColor: "#00c853", 
+              style={{
+                backgroundColor: "#00c853",
                 borderColor: "#00c853",
                 borderRadius: "6px"
               }}
@@ -547,11 +549,11 @@ const getLevelBadgeColor = (level) => {
           boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
         }}
       >
-        <Tab 
-          eventKey="users" 
+        <Tab
+          eventKey="users"
           title={
             <div className="d-flex align-items-center py-3" style={{ color: "#00c853" }}>
-              <PeopleFill className="me-2" /> 
+              <PeopleFill className="me-2" />
               <span className="fw-medium">User Management</span>
             </div>
           }
@@ -571,7 +573,7 @@ const getLevelBadgeColor = (level) => {
                   <div className="position-relative">
                     <FormControl
                       className="ps-4"
-                      style={{ 
+                      style={{
                         borderRadius: "6px",
                         boxShadow: "none",
                         minWidth: "250px",
@@ -584,17 +586,17 @@ const getLevelBadgeColor = (level) => {
                       ref={searchRef}
                       onKeyPress={handleKeyPress}
                     />
-                    <Search className="position-absolute" style={{ 
-                      left: "10px", 
-                      top: "50%", 
+                    <Search className="position-absolute" style={{
+                      left: "10px",
+                      top: "50%",
                       transform: "translateY(-50%)",
                       color: "#999999"
                     }} />
                   </div>
                   <Button
                     variant="primary"
-                    style={{ 
-                      backgroundColor: "#00c853", 
+                    style={{
+                      backgroundColor: "#00c853",
                       borderColor: "#00c853",
                       borderRadius: "6px"
                     }}
@@ -611,7 +613,7 @@ const getLevelBadgeColor = (level) => {
                   </Button>
                   <Button
                     variant="light"
-                    style={{ 
+                    style={{
                       borderRadius: "6px",
                       border: "1px solid #444444",
                       backgroundColor: "#333333",
@@ -652,7 +654,7 @@ const getLevelBadgeColor = (level) => {
                   </small>
                 </div>
               )}
-              
+
               <div className="table-responsive">
                 <Table hover className="align-middle border table-dark" style={{ borderRadius: "8px", overflow: "hidden" }}>
                   <thead style={{ backgroundColor: "#333333" }}>

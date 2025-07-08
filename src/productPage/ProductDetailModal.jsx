@@ -2,23 +2,26 @@ import React, { useState, useEffect } from "react";
 import { Modal, Button, Table, Badge, Row, Col, Card } from "react-bootstrap";
 import { Display, Calendar, PersonFill, FileText, Cpu, Hdd, Trash, Pencil } from "react-bootstrap-icons";
 
-function ProductDetailModal({ show, onHide, atModel, displaySize, products }) {
+
+function ProductDetailModal({ show, onHide, atModel, displaySize, products ,location,updateProductInList}) {
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   useEffect(() => {
-    if (show && atModel && displaySize && products) {
-      filterProductDetails();
-    }
-  }, [show, atModel, displaySize, products]);
-
+  if (show && atModel && displaySize && location && products) {
+    filterProductDetails();
+  }
+  }, [show, atModel, displaySize, location, products]);
   const filterProductDetails = () => {
     setLoading(true);
     try {
       // กรองสินค้าที่มี AT Model และขนาดจอเหมือนกัน
       const filtered = products.filter(product => 
         product.AT_Model === atModel && 
-        product.displaysize === displaySize
+        product.displaysize === displaySize &&
+        product.location === location
       );
       
       setFilteredProducts(filtered);
@@ -233,15 +236,23 @@ function ProductDetailModal({ show, onHide, atModel, displaySize, products }) {
                             <Trash size={14} />
                           </Button>
                           <Button
-                            variant="warning"
-                            size="sm"
-                            style={{
-                              borderRadius: "4px",
-                              padding: "4px 8px"
-                            }}
-                          >
-                            <Pencil size={14} />
-                          </Button>
+  variant="warning"
+  size="sm"
+  style={{
+    borderRadius: "4px",
+    padding: "4px 8px"
+  }}
+ onClick={() => {
+  setSelectedProduct({
+    ...product,
+    original_AT_SN: product.AT_SN 
+  });
+  setShowEditModal(true);
+}}
+
+>
+  <Pencil size={14} />
+</Button>
                         </div>
                       </td>
                     </tr>
@@ -249,6 +260,167 @@ function ProductDetailModal({ show, onHide, atModel, displaySize, products }) {
                 </tbody>
               </Table>
             </div>
+           <Modal
+  show={showEditModal}
+  onHide={() => setShowEditModal(false)}
+  backdrop="static"
+  keyboard={false}
+>
+  <Modal.Header closeButton style={{ backgroundColor: "#2a2a2a", color: "#e0e0e0" }}>
+    <Modal.Title>แก้ไขสินค้า</Modal.Title>
+  </Modal.Header>
+  <Modal.Body style={{ backgroundColor: "#2a2a2a", color: "#e0e0e0" }}>
+    {selectedProduct ? (
+      <form>
+        <Row className="mb-3">
+  <Col md={12}>
+    <label className="form-label">S/N</label> {/* แค่ชื่อ label */}
+<input
+  type="text"
+  className="form-control"
+  value={selectedProduct?.AT_SN || ""}
+  onChange={(e) =>
+    setSelectedProduct({
+      ...selectedProduct,
+      AT_SN: e.target.value,
+    })
+  }
+/>
+
+
+  </Col>
+</Row>
+
+        <Row className="mb-3">
+          <Col md={12}>
+            <label className="form-label">Location</label>
+            <input
+              type="text"
+              className="form-control"
+              value={selectedProduct.location || ""}
+              onChange={(e) =>
+                setSelectedProduct({
+                  ...selectedProduct,
+                  location: e.target.value,
+                })
+              }
+            />
+          </Col>
+        </Row>
+
+        <Row className="mb-3">
+          <Col md={6}>
+            <label className="form-label">CPU</label>
+            <input
+              type="text"
+              className="form-control"
+              value={selectedProduct.CPU || ""}
+              onChange={(e) =>
+                setSelectedProduct({
+                  ...selectedProduct,
+                  CPU: e.target.value,
+                })
+              }
+            />
+          </Col>
+          <Col md={6}>
+            <label className="form-label">RAM</label>
+            <input
+              type="text"
+              className="form-control"
+              value={selectedProduct.Ram || ""}
+              onChange={(e) =>
+                setSelectedProduct({
+                  ...selectedProduct,
+                  Ram: e.target.value,
+                })
+              }
+            />
+          </Col>
+        </Row>
+
+        <Row className="mb-3">
+          <Col md={6}>
+            <label className="form-label">Storage</label>
+            <input
+              type="text"
+              className="form-control"
+              value={selectedProduct['SSD/HDD'] || ""}
+              onChange={(e) =>
+                setSelectedProduct({
+                  ...selectedProduct,
+                  ['SSD/HDD']: e.target.value,
+                })
+              }
+            />
+          </Col>
+          <Col md={6}>
+            <label className="form-label">Note</label>
+            <input
+              type="text"
+              className="form-control"
+              value={selectedProduct.Note || ""}
+              onChange={(e) =>
+                setSelectedProduct({
+                  ...selectedProduct,
+                  Note: e.target.value,
+                })
+              }
+            />
+          </Col>
+        </Row>
+      </form>
+    ) : (
+      <p>ไม่พบข้อมูลสินค้า</p>
+    )}
+  </Modal.Body>
+  <Modal.Footer style={{ backgroundColor: "#2a2a2a", color: "#e0e0e0" }}>
+    <Button variant="secondary" onClick={() => setShowEditModal(false)}>
+      ยกเลิก
+    </Button>
+    <Button
+  variant="success"
+  onClick={async () => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SERVER}/Store.php?action=updateProduct`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(selectedProduct),
+        }
+      );
+      const data = await res.json();
+      if (data.status === "success") {
+        alert("บันทึกข้อมูลเรียบร้อยแล้ว");
+
+        // ✅ อัปเดตใน state ไม่ต้องโหลดใหม่
+        setFilteredProducts(prev =>
+          prev.map(item =>
+            item.AT_SN === selectedProduct.original_AT_SN
+              ? { ...item, ...selectedProduct }
+              : item
+          )
+        );
+        
+        updateProductInList(selectedProduct);
+
+        setShowEditModal(false);
+      } else {
+        alert("เกิดข้อผิดพลาด: " + data.message);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("ไม่สามารถบันทึกข้อมูลได้");
+    }
+  }}
+>
+  บันทึกการแก้ไข
+</Button>
+
+  </Modal.Footer>
+</Modal>
+
 
             {/* ข้อมูลเพิ่มเติม */}
             <Row className="mt-4">
@@ -300,6 +472,8 @@ function ProductDetailModal({ show, onHide, atModel, displaySize, products }) {
         </Button>
       </Modal.Footer>
     </Modal>
+
+    
   );
 }
 

@@ -2012,6 +2012,45 @@ else if ($action == "deleteSerial") {
     mysqli_close($link);
 }
 
+else if ($action == "updateProduct") {
+    $input = json_decode(file_get_contents("php://input"), true);
+
+    // ใช้ original_AT_SN เป็น Key เดิม
+    $original_AT_SN = mysqli_real_escape_string($link, $input['original_AT_SN'] ?? '');
+    $new_AT_SN = mysqli_real_escape_string($link, $input['AT_SN'] ?? '');
+    $location = mysqli_real_escape_string($link, $input['location'] ?? '');
+    $CPU = mysqli_real_escape_string($link, $input['CPU'] ?? '');
+    $Ram = mysqli_real_escape_string($link, $input['Ram'] ?? '');
+    $Storage = mysqli_real_escape_string($link, $input['SSD/HDD'] ?? '');
+    $Note = mysqli_real_escape_string($link, $input['Note'] ?? '');
+
+    if (empty($original_AT_SN)) {
+        echo json_encode(['status' => 'error', 'message' => 'Missing original_AT_SN']);
+        mysqli_close($link);
+        exit;
+    }
+
+    $sql = "UPDATE tb_product SET 
+                AT_SN = '$new_AT_SN',
+                location = '$location',
+                CPU = '$CPU',
+                Ram = '$Ram',
+                `SSD/HDD` = '$Storage',
+                Note = '$Note'
+            WHERE AT_SN = '$original_AT_SN'";
+
+    $result = mysqli_query($link, $sql);
+
+    if ($result) {
+        echo json_encode(['status' => 'success']);
+    } else {
+        echo json_encode(['status' => 'error', 'message' => mysqli_error($link)]);
+    }
+
+    mysqli_close($link);
+}
+
+
 // ฟังก์ชันค้นหาสินค้า
 else if ($action == "searchProducts") {
     $search = isset($_GET['search']) ? $_GET['search'] : '';
@@ -2299,12 +2338,35 @@ else if ($action == "deleteProduct") {
     }
 
     mysqli_close($link);
+
 } else if ($action == "getFixList") {
-    $sql = "SELECT * FROM tb_fixlist ORDER BY date DESC";
+    // วิธีที่ 1: ใช้ ROW_NUMBER() (MySQL 8.0+)
+    $sql = "SELECT * FROM (
+                SELECT *, 
+                       ROW_NUMBER() OVER (PARTITION BY fixID ORDER BY date DESC) as rn
+                FROM tb_fixlist
+            ) ranked
+            WHERE rn = 1
+            ORDER BY date DESC";
+
     $result = mysqli_query($link, $sql);
 
+    // ถ้า MySQL เวอร์ชั่นเก่า ให้ใช้วิธีนี้แทน
     if (!$result) {
-        echo json_encode(null);
+        $sql = "SELECT t1.* 
+                FROM tb_fixlist t1
+                INNER JOIN (
+                    SELECT fixID, MAX(date) as max_date
+                    FROM tb_fixlist
+                    GROUP BY fixID
+                ) t2 ON t1.fixID = t2.fixID AND t1.date = t2.max_date
+                ORDER BY t1.date DESC";
+        
+        $result = mysqli_query($link, $sql);
+    }
+
+    if (!$result) {
+        echo json_encode(array('error' => 'Query failed: ' . mysqli_error($link)));
         mysqli_close($link);
         return;
     }
@@ -2420,7 +2482,6 @@ else if ($action == "addFixItem") {
 
 // ฟังก์ชันแก้ไข Fix Item
 else if ($action == "updateFixItem") {
-   
     // รับข้อมูลจาก GET parameters
     $status = isset($_GET['Status']) ? mysqli_real_escape_string($link, $_GET['Status']) : '';
     $location = isset($_GET['Location']) ? mysqli_real_escape_string($link, $_GET['Location']) : '';
@@ -2444,74 +2505,88 @@ else if ($action == "updateFixItem") {
         return;
     }
 
-    // อัพเดทข้อมูล
-    $sql = "INSERT `tb_fixlist` SET 
-                `Status` = '$status',
-                `Location` = '$location',
-                `date` = '$date',
-                `Modal` = '$modal',
-                `Cpu` = '$cpu',
-                `Mainboard` = '$mainboard',
-                `SN` = '$sn',
-                `Customer` = '$customer',
-                `symptom` = '$symptom',
-                `did` = '$did',
-                `equipinsite` = '$equipinsite',
-                `sender` = '$sender',
-                `receiver` = '$receiver'
-            WHERE `fixID` = $fixID";
+    // **เปลี่ยนจาก UPDATE เป็น INSERT ใหม่**
+    $sql = "INSERT INTO tb_fixlist (
+                fixID, Status, Location, date, Modal, Cpu, Mainboard, SN,
+                Customer, symptom, did, equipinsite, sender, receiver
+            ) VALUES (
+                '$fixID', '$status', '$location', '$date', '$modal', '$cpu',
+                '$mainboard', '$sn', '$customer', '$symptom', '$did', '$equipinsite',
+                '$sender', '$receiver'
+            )";
 
     $result = mysqli_query($link, $sql);
 
     if ($result) {
-        if (mysqli_affected_rows($link) > 0) {
-            echo json_encode(array("status" => "success", "message" => "Fix item updated successfully"));
-        } else {
-            echo json_encode(array("status" => "error", "message" => "No changes made or record not found"));
-        }
+        echo json_encode(array("status" => "success", "message" => "New version inserted successfully"));
     } else {
-        echo json_encode(array("status" => "error", "message" => "Error updating fix item: " . mysqli_error($link)));
+        echo json_encode(array("status" => "error", "message" => "Error inserting new version: " . mysqli_error($link)));
     }
 
     mysqli_close($link);
 }
 
-// ฟังก์ชันลบ Fix Item
 else if ($action == "deleteFixItem") {
-    $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-    if ($id <= 0) {
-        echo json_encode(array("status" => "error", "message" => "Invalid ID"));
+    $fixID = isset($_GET['fixID']) ? mysqli_real_escape_string($link, $_GET['fixID']) : '';
+
+    if (empty($fixID)) {
+        echo json_encode(array("status" => "error", "message" => "Missing fixID"));
         mysqli_close($link);
         return;
     }
 
-    // ตรวจสอบว่ามีข้อมูลอยู่หรือไม่
-    $checkSQL = "SELECT id FROM tb_fixlist WHERE id = $id";
-    $checkResult = mysqli_query($link, $checkSQL);
-
-    if (mysqli_num_rows($checkResult) == 0) {
-        echo json_encode(array("status" => "error", "message" => "Record not found"));
-        mysqli_close($link);
-        return;
-    }
-
-    // ลบข้อมูล
-    $sql = "DELETE FROM tb_fixlist WHERE id = $id";
+    $sql = "DELETE FROM tb_fixlist WHERE fixID = '$fixID'";
     $result = mysqli_query($link, $sql);
 
     if ($result) {
         if (mysqli_affected_rows($link) > 0) {
-            echo json_encode(array("status" => "success", "message" => "Fix item deleted successfully"));
+            echo json_encode(array("status" => "success", "message" => "Deleted fixID: $fixID"));
         } else {
-            echo json_encode(array("status" => "error", "message" => "Record not found"));
+            echo json_encode(array("status" => "error", "message" => "No records found for fixID: $fixID"));
         }
     } else {
-        echo json_encode(array("status" => "error", "message" => "Error deleting fix item: " . mysqli_error($link)));
+        echo json_encode(array("status" => "error", "message" => "Error deleting: " . mysqli_error($link)));
     }
 
     mysqli_close($link);
 }
 
+
+
+else if ($action == "fixlistmodal") {
+    // รับค่าจาก GET
+    $fixID = isset($_GET['fixID']) ? $_GET['fixID'] : '';
+
+    // ตรวจสอบว่ามี fixID ไหม
+    if (empty($fixID)) {
+        echo json_encode(array("status" => "error", "message" => "Missing fixID"));
+        mysqli_close($link);
+        exit;
+    }
+
+    // เตรียม SQL (เลือกเฉพาะคอลัมน์ที่ต้องการ)
+    $sql = "SELECT fixID, date, did, Modal
+            FROM tb_fixlist
+            WHERE fixID = ?
+            ORDER BY date DESC";
+
+    // Prepare + Bind + Execute
+    $stmt = mysqli_prepare($link, $sql);
+    mysqli_stmt_bind_param($stmt, "s", $fixID);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+
+    // เก็บข้อมูลใน array
+    $data = array();
+    while ($row = mysqli_fetch_assoc($result)) {
+        $data[] = $row;
+    }
+
+    // ตอบกลับเป็น JSON
+    echo json_encode($data);
+    mysqli_close($link);
+    exit;
+}
 // ฟังก์ชันดึงข้อมูล Fix Item รายการเดียว
 else if ($action == "getFixItem") {
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
@@ -2591,7 +2666,51 @@ else if ($action == "getFixListStats") {
         echo json_encode("ok");
     }
     mysqli_close($link);
-}else if ($action == "updateStockItem") {
+
+    
+}
+else if ($action == "getLastFixId") {
+    $date = isset($_GET['date']) ? $_GET['date'] : '';
+
+    if (empty($date)) {
+        echo json_encode(array("status" => "error", "message" => "Missing date parameter"));
+        mysqli_close($link);
+        return;
+    }
+
+    // หาว่า fixID ล่าสุดของวันที่นี้คืออะไร (ดูจากเลขท้าย 3 หลัก)
+    $sql = "SELECT fixID 
+            FROM tb_fixlist 
+            WHERE fixID LIKE 'F{$date}%' 
+            ORDER BY fixID DESC 
+            LIMIT 1";
+
+    $result = mysqli_query($link, $sql);
+
+    if ($result && mysqli_num_rows($result) > 0) {
+        $row = mysqli_fetch_assoc($result);
+        $lastFixID = $row['fixID'];
+
+        // แยกเลขลำดับ 3 หลักท้าย
+        $lastSequence = intval(substr($lastFixID, -3));
+        
+        echo json_encode(array(
+            "status" => "success",
+            "last_sequence" => $lastSequence
+        ));
+    } else {
+        // ถ้ายังไม่มีรหัสวันนี้
+        echo json_encode(array(
+            "status" => "success",
+            "last_sequence" => 0
+        ));
+    }
+
+    mysqli_close($link);
+}
+
+
+else if ($action == "updateStockItem") {
     $part_num = isset($_GET['part_num']) ? $_GET['part_num'] : '';
     $part_name = isset($_GET['part_name']) ? $_GET['part_name'] : '';
     $supplier = isset($_GET['supplier']) ? $_GET['supplier'] : '';
@@ -2759,7 +2878,7 @@ else if ($action == "getItemDetails") {
     $po_number = isset($_GET['po_number']) ? mysqli_real_escape_string($link, $_GET['po_number']) : '';
     $dateout = $_GET['dateout'] ?? '';
     $note = isset($_GET['note']) ? mysqli_real_escape_string($link, $_GET['note']) : '';
-    $product_status = 'ขายแล้ว';
+    $product_status = isset($_GET['product_status']) ? mysqli_real_escape_string($link, $_GET['product_status']) : 'ขายแล้ว';
 
     // ตรวจสอบข้อมูลที่จำเป็น
     if (empty($product_id) || empty($customer) || empty($dateout)) {
@@ -2846,15 +2965,16 @@ else if ($action == "getItemDetails") {
 // ฟังก์ชันดึงข้อมูลสินค้าตาม Serial Number
 else if ($action == "getProductBySerial") {
     $serial = isset($_GET['serial']) ? mysqli_real_escape_string($link, $_GET['serial']) : '';
+    $location = isset($_GET['location']) ? mysqli_real_escape_string($link, $_GET['location']) : '';
 
-    if (empty($serial)) {
-        echo json_encode(array("status" => "error", "message" => "ไม่ได้ระบุ Serial Number"));
+    if (empty($serial) || empty($location)) {
+        echo json_encode(array("status" => "error", "message" => "กรุณาระบุ Serial Number และ Location"));
         mysqli_close($link);
         return;
     }
 
-    // ค้นหาสินค้าด้วย AT_SN
-    $sql = "SELECT * FROM tb_product WHERE AT_SN = '$serial' LIMIT 1";
+    // ค้นหาด้วย Serial + Location พร้อมกัน
+    $sql = "SELECT * FROM tb_product WHERE AT_SN = '$serial' AND location = '$location' LIMIT 1";
     $result = mysqli_query($link, $sql);
 
     if (!$result) {
@@ -2867,11 +2987,14 @@ else if ($action == "getProductBySerial") {
         $productData = mysqli_fetch_assoc($result);
         echo json_encode($productData);
     } else {
-        echo json_encode(array("status" => "error", "message" => "ไม่พบข้อมูลสินค้าที่มี Serial Number นี้"));
+        echo json_encode(array("status" => "error", "message" => "ไม่พบข้อมูลสินค้าที่มี Serial และ Location ตรงกัน"));
     }
 
     mysqli_close($link);
-}else if ($action == "getPcLog") {
+}
+
+
+else if ($action == "getPcLog") {
     $sql = "SELECT * FROM tb_log_pc ORDER BY date DESC, logID DESC LIMIT 1000";
     $result = mysqli_query($link, $sql);
 
