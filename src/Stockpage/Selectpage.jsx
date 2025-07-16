@@ -13,7 +13,11 @@ import {
   Building,
   GeoAltFill,
   Boxes,
-  Clipboard2DataFill
+  Clipboard2DataFill,
+  Display,
+  Tools,
+  Archive,
+  Send
 } from "react-bootstrap-icons";
 
 function Selectpage() {
@@ -55,10 +59,19 @@ function Selectpage() {
       color: '#00c853', // สีเขียวหลักของ ALIAN
       url: '/ERP/Stock',
       features: ['จัดการสต๊อก', 'ติดตามการเบิก-จ่าย', 'รายงานสินค้าคงคลัง']
+    },
+    {
+      id: 'product',
+      title: 'Product System',
+      description: 'ระบบจัดการสินค้า',
+      icon: <Display size={36} />,
+      color: '#00c853', // สีเขียวหลักของ ALIAN
+      url: '/ERP/Product',
+      features: ['จัดเก็บสินค้า', 'นำออกสินค้า', 'ส่งซ่อม']
     }
   ];
 
-  // ใช้ข้อมูลระบบเดิมเท่านั้น
+  // ใช้ข้อมูลระบบที่เพิ่ม Product เข้าไป
   const allSystems = systems;
 
   // ฟังก์ชันสำหรับการจัดการคลิกที่การ์ด
@@ -88,7 +101,7 @@ function Selectpage() {
 
         <Row className="justify-content-center g-4">
           {allSystems.map((system) => (
-            <Col key={system.id} xs={12} md={6} className="mb-4">
+            <Col key={system.id} xs={12} md={6} lg={4} className="mb-4">
               <Card
                 style={{
                   ...cardStyle,
@@ -306,7 +319,7 @@ function Selectpage() {
                         alignItems: 'center',
                         justifyContent: 'center'
                       }}>
-                        <GeoAltFill size={20} />
+                        <Display size={20} />
                       </div>
                       <div className="ms-3">
                         <h5 style={{ 
@@ -315,19 +328,20 @@ function Selectpage() {
                           marginBottom: '0.3rem',
                           color: '#ffffff'
                         }}>
-                          ตำแหน่งจัดเก็บ
+                          Product System
                         </h5>
                         <p style={{ 
                           fontSize: '0.875rem',
                           color: '#bdbdbd',
                           marginBottom: '0'
                         }}>
-                          บริหารพื้นที่จัดเก็บสินค้า และค้นหาได้รวดเร็ว
+                          จัดเก็บสินค้า นำออกสินค้า และส่งซ่อม
                         </p>
                       </div>
                     </div>
                   </Col>
                 </Row>
+                
               </Card.Body>
             </Card>
           </Col>

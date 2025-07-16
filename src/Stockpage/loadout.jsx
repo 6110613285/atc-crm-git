@@ -5,25 +5,7 @@ import Swal from "sweetalert2";
 function LoadOut({ onSave, Username = localStorage.getItem("fullname"), children }) {
   const [validated, setValidated] = useState(false);
   const [show, setShow] = useState(false);
-  const [stockParts, setStockParts] = useState([]);
-  const [locations, setLocations] = useState([]);
-  const [serials, setSerials] = useState([]);
-  const [selectedPart, setSelectedPart] = useState(null);
-  const [selectedLocation, setSelectedLocation] = useState(null);
-  const [partName, setPartName] = useState('');
-  const [supplier, setSupplier] = useState('');
-  const [selectedSerials, setSelectedSerials] = useState([{ serial: "", quantity: 1 }]);
-
-  const [locationInput, setLocationInput] = useState("");
-  const [serialInput, setSerialInput] = useState("");
-  const [filteredStockParts, setFilteredStockParts] = useState([]);
-  const [filteredLocations, setFilteredLocations] = useState([]);
-  const [filteredSerials, setFilteredSerials] = useState([]);
-  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
-  const [storeName, setStoreName] = useState('');
-
-  const locationInputRef = useRef(null);
-  const serialInputRef = useRef(null);
+  const [selectedSerials, setSelectedSerials] = useState([{ serial: "", quantity: 1, location: "", store_name: "", part_num: "", part_name: "", supplier: "", max_quantity: 1 }]);
 
   const handleClose = () => {
     setShow(false);
@@ -37,15 +19,7 @@ function LoadOut({ onSave, Username = localStorage.getItem("fullname"), children
 
   const resetForm = () => {
     setValidated(false);
-    setSelectedPart(null);
-    setSelectedLocation(null);
-    setLocationInput("");
-    setSerialInput("");
-    setPartName("");
-    setSupplier("");
-    setStoreName("");
-    setSelectedSerials([{ serial: "", quantity: 1 }]);
-    setShowLocationDropdown(false);
+    setSelectedSerials([{ serial: "", quantity: 1, location: "", store_name: "", part_num: "", part_name: "", supplier: "", max_quantity: 1 }]);
 
     // Reset all refs
     Object.values(refs).forEach(ref => {
@@ -55,129 +29,9 @@ function LoadOut({ onSave, Username = localStorage.getItem("fullname"), children
     });
   };
 
-  useEffect(() => {
-    fetchStockParts();
-    fetchLocations();
-  }, []);
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (locationInputRef.current && !locationInputRef.current.contains(event.target)) {
-        setShowLocationDropdown(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (locationInput) {
-      const filtered = locations.filter(location =>
-        location.location_name.toLowerCase().includes(locationInput.toLowerCase())
-      );
-      setFilteredLocations(filtered);
-    } else {
-      setFilteredLocations(locations);
-    }
-  }, [locationInput, locations]);
-
-  // กรองรายการ Serials ตามข้อความที่พิมพ์
-  useEffect(() => {
-    if (serialInput) {
-      const filtered = serials.filter(serial =>
-        serial.serial_num.toLowerCase().includes(serialInput.toLowerCase()) ||
-        (serial.part_num && serial.part_num.toLowerCase().includes(serialInput.toLowerCase())) ||
-        (serial.part_name && serial.part_name.toLowerCase().includes(serialInput.toLowerCase()))
-      );
-      setFilteredSerials(filtered);
-    } else {
-      setFilteredSerials(serials);
-    }
-  }, [serialInput, serials]);
-
-  const fetchStockParts = async () => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_SERVER}/Store.php?action=getStockParts`);
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        setStockParts(data);
-        setFilteredStockParts(data);
-      } else {
-        setStockParts([]);
-        setFilteredStockParts([]);
-      }
-    } catch (error) {
-      console.error("Error fetching stock parts:", error);
-      setStockParts([]);
-      setFilteredStockParts([]);
-    }
-  };
-
-  // ฟังก์ชันดึงข้อมูลจาก tb_location
-  const fetchLocations = async () => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_SERVER}/Store.php?action=getLo`);
-      const data = await response.json();
-      if (data) {
-        setLocations(data);
-        setFilteredLocations(data);
-      }
-    } catch (error) {
-      console.error("Error fetching locations:", error);
-    }
-  };
-
-  const handleLocationInputChange = (e) => {
-    setLocationInput(e.target.value);
-    setSelectedLocation(null);
-    setStoreName('');
-    setShowLocationDropdown(true);
-  };
-
-  const handleLocationInputClick = () => {
-    setShowLocationDropdown(true);
-  };
-
-  const handleLocationSelection = (location) => {
-    setLocationInput(location.location);
-    setStoreName(location.store_name || '');
-    setSelectedLocation({
-      location_name: location.location,
-      store_name: location.store_name
-    });
-    setShowLocationDropdown(false);
-    
-    // โหลด serial numbers สำหรับ location นี้
-    loadSerialsForLocation(location.location);
-  };
-
-  // ฟังก์ชันโหลด serials จาก location ที่เลือก
-  const loadSerialsForLocation = async (locationName) => {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SERVER}/Store.php?action=getSerialsForLocation&location=${encodeURIComponent(locationName)}`
-      );
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        setSerials(data);
-        setFilteredSerials(data);
-      } else {
-        setSerials([]);
-        setFilteredSerials([]);
-      }
-    } catch (error) {
-      console.error("Error loading serials for location:", error);
-      setSerials([]);
-      setFilteredSerials([]);
-    }
-  };
-
   // ฟังก์ชันสำหรับเพิ่มช่อง Serial เพิ่มเติม
   const addSerialRow = () => {
-    const newSerials = [...selectedSerials, { serial: "", quantity: 1 }];
+    const newSerials = [...selectedSerials, { serial: "", quantity: 1, location: "", store_name: "", part_num: "", part_name: "", supplier: "", max_quantity: 1 }];
     setSelectedSerials(newSerials);
     
     // ใช้ setTimeout เพื่อให้แน่ใจว่า DOM ได้ render ก่อนที่จะพยายาม focus
@@ -211,14 +65,20 @@ function LoadOut({ onSave, Username = localStorage.getItem("fullname"), children
     setSelectedSerials(updatedSerials);
   };
 
+  // ฟังก์ชันดึงข้อมูลจาก Serial Number (แก้ไขใหม่)
   const updateSerialInfo = async (index, serialNumber) => {
-    if (!serialNumber || !selectedLocation) return;
+    if (!serialNumber) return;
     
     try {
-      // ค้นหาข้อมูล serial จาก serials ที่โหลดมาแล้ว
-      const serialInfo = serials.find(s => s.serial_num === serialNumber);
+      // เรียก API เพื่อค้นหาข้อมูล Serial จากทุก Location
+      const response = await fetch(
+        `${import.meta.env.VITE_SERVER}/Store.php?action=getSerialInfo&serial_num=${encodeURIComponent(serialNumber)}`
+      );
+      const data = await response.json();
       
-      if (serialInfo) {
+      if (data && data.length > 0) {
+        const serialInfo = data[0]; // เอาข้อมูลตัวแรก
+        
         const updatedSerials = [...selectedSerials];
         updatedSerials[index] = {
           ...updatedSerials[index],
@@ -226,21 +86,49 @@ function LoadOut({ onSave, Username = localStorage.getItem("fullname"), children
           part_num: serialInfo.part_num,
           part_name: serialInfo.part_name,
           supplier: serialInfo.supplier,
+          location: serialInfo.location,
+          store_name: serialInfo.store_name,
           quantity: 1,
           max_quantity: serialInfo.qty, // เก็บจำนวนสูงสุดที่มีอยู่
           sup_serial: serialInfo.sup_serial || ''
         };
         setSelectedSerials(updatedSerials);
+      } else {
+        // ถ้าไม่พบข้อมูล
+        Swal.fire({
+          position: "center",
+          icon: "warning",
+          title: `ไม่พบ Serial Number: ${serialNumber}`,
+          text: "กรุณาตรวจสอบ Serial Number อีกครั้ง",
+          showConfirmButton: false,
+          timer: 2000,
+        });
         
-        // หากเป็นการเลือก serial แรก และยังไม่ได้เลือก part ให้ดึงข้อมูล part มาแสดงด้วย
-        if (index === 0 && !selectedPart) {
-          setPartName(serialInfo.part_name || '');
-          setSupplier(serialInfo.supplier || '');
-          setSelectedPart(serialInfo);
-        }
+        // รีเซ็ตข้อมูลในแถวนั้น
+        const updatedSerials = [...selectedSerials];
+        updatedSerials[index] = {
+          ...updatedSerials[index],
+          serial: serialNumber, // ยังคงไว้เพื่อให้ผู้ใช้แก้ไข
+          part_num: "",
+          part_name: "",
+          supplier: "",
+          location: "",
+          store_name: "",
+          quantity: 1,
+          max_quantity: 1,
+          sup_serial: ""
+        };
+        setSelectedSerials(updatedSerials);
       }
     } catch (error) {
-      console.error("Error updating serial info:", error);
+      console.error("Error fetching serial info:", error);
+      Swal.fire({
+        position: "center",
+        icon: "error",
+        title: "เกิดข้อผิดพลาดในการค้นหาข้อมูล",
+        showConfirmButton: false,
+        timer: 2000,
+      });
     }
   };
 
@@ -274,11 +162,11 @@ function LoadOut({ onSave, Username = localStorage.getItem("fullname"), children
     }
 
     // ตรวจสอบว่ามี Serial ที่เลือกหรือไม่
-    if (selectedSerials.length === 0 || selectedSerials.some(item => !item.serial)) {
+    if (selectedSerials.length === 0 || selectedSerials.some(item => !item.serial || !item.location)) {
       Swal.fire({
         position: "center",
         icon: "error",
-        title: "โปรดเลือก Serial Number อย่างน้อย 1 รายการ",
+        title: "โปรดกรอก Serial Number ที่ถูกต้องอย่างน้อย 1 รายการ",
         showConfirmButton: false,
         timer: 2000,
       });
@@ -288,8 +176,10 @@ function LoadOut({ onSave, Username = localStorage.getItem("fullname"), children
     try {
       // บันทึก Log และอัพเดท Stock สำหรับแต่ละ Serial
       for (const serialItem of selectedSerials) {
-        await saveLogEntry(serialItem);
-        await updateStock(serialItem);
+        if (serialItem.serial && serialItem.location) {
+          await saveLogEntry(serialItem);
+          await updateStock(serialItem);
+        }
       }
 
       Swal.fire({
@@ -322,10 +212,10 @@ function LoadOut({ onSave, Username = localStorage.getItem("fullname"), children
         `&uname=${encodeURIComponent(Username)}` +
         `&partnum=${encodeURIComponent(serialItem.part_num)}` +
         `&partname=${encodeURIComponent(serialItem.part_name)}` +
-        `&supplier=${encodeURIComponent(serialItem.supplier || supplier)}` +
+        `&supplier=${encodeURIComponent(serialItem.supplier || '')}` +
         `&qty=${encodeURIComponent(serialItem.quantity)}` +
-        `&location=${encodeURIComponent(selectedLocation.location_name)}` +
-        `&storename=${encodeURIComponent(selectedLocation.store_name)}` +
+        `&location=${encodeURIComponent(serialItem.location)}` +
+        `&storename=${encodeURIComponent(serialItem.store_name)}` +
         `&note=${encodeURIComponent(refs.noteRef.current.value || '')}` +
         `&status=${encodeURIComponent("OUT")}` +
         `&serial_num=${encodeURIComponent(serialItem.serial || '')}`;
@@ -353,10 +243,10 @@ function LoadOut({ onSave, Username = localStorage.getItem("fullname"), children
         `&uname=${encodeURIComponent(Username)}` +
         `&partnum=${encodeURIComponent(serialItem.part_num)}` +
         `&partname=${encodeURIComponent(serialItem.part_name)}` +
-        `&supplier=${encodeURIComponent(serialItem.supplier || supplier)}` +
+        `&supplier=${encodeURIComponent(serialItem.supplier || '')}` +
         `&qty=${encodeURIComponent(serialItem.quantity)}` +
-        `&location=${encodeURIComponent(selectedLocation.location_name)}` +
-        `&storename=${encodeURIComponent(selectedLocation.store_name)}` +
+        `&location=${encodeURIComponent(serialItem.location)}` +
+        `&storename=${encodeURIComponent(serialItem.store_name)}` +
         `&note=${encodeURIComponent(refs.noteRef.current.value || '')}` +
         `&status=${encodeURIComponent("OUT")}` +
         `&serial_num=${encodeURIComponent(serialItem.serial || '')}` +
@@ -377,12 +267,6 @@ function LoadOut({ onSave, Username = localStorage.getItem("fullname"), children
 
   // Refs for form fields
   const refs = {
-    partNameRef: useRef(null),
-    partTypeRef: useRef(null),
-    supplierRef: useRef(null),
-    qtyRef: useRef(null),
-    locationIdRef: useRef(null),
-    locationNameRef: useRef(null),
     noteRef: useRef(null),
   };
 
@@ -401,61 +285,12 @@ function LoadOut({ onSave, Username = localStorage.getItem("fullname"), children
           </Modal.Header>
           <Modal.Body>
             <Row className="mb-3">
-              <Form.Group as={Col} md="12" className="mb-3 position-relative" ref={locationInputRef}>
-                <Form.Label><b>Location</b></Form.Label>
-                <div className="input-group">
-                  <Form.Control
-                    required
-                    type="text"
-                    value={locationInput}
-                    onChange={handleLocationInputChange}
-                    onClick={handleLocationInputClick}
-                    placeholder="Select location..."
-                    isInvalid={validated && !selectedLocation}
-                  />
-                  <div className="input-group-append">
-                    <Button
-                      variant="outline-secondary"
-                      onClick={handleLocationInputClick}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-caret-down-fill" viewBox="0 0 16 16">
-                        <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z" />
-                      </svg>
-                    </Button>
-                  </div>
+              {/* ข้อความแนะนำ */}
+              <Col md="12" className="mb-3">
+                <div className="alert alert-info">
+                  <strong>คำแนะนำ:</strong> กรอก Serial Number เพื่อดึงข้อมูลสถานที่และรายละเอียดสินค้าอัตโนมัติ
                 </div>
-                {showLocationDropdown && (
-                  <ListGroup
-                    className="position-absolute w-100 shadow-sm"
-                    style={{ zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}
-                  >
-                    {stockParts.length > 0 ? (
-                      [...new Map(stockParts.map(item => [item.location, item])).values()].map((item, idx) => (
-                        <ListGroup.Item
-                          key={idx}
-                          action
-                          onClick={() => handleLocationSelection(item)}
-                          style={{ cursor: 'pointer' }}
-                        >
-                          {item.location} ({item.store_name})
-                        </ListGroup.Item>
-                      ))
-                    ) : (
-                      <ListGroup.Item>No locations with stock found</ListGroup.Item>
-                    )}
-                  </ListGroup>
-                )}
-              </Form.Group>
-
-              <Form.Group as={Col} md="6" className="mb-3">
-                <Form.Label><b>Store Name</b></Form.Label>
-                <Form.Control
-                  required
-                  type="text"
-                  value={storeName}
-                  readOnly
-                />
-              </Form.Group>
+              </Col>
 
               {/* ส่วนแสดงรายการ Serial Numbers */}
               <Form.Group as={Col} md="12" className="mb-3">
@@ -466,7 +301,6 @@ function LoadOut({ onSave, Username = localStorage.getItem("fullname"), children
                     size="sm"
                     className="add-serial-btn"
                     onClick={addSerialRow}
-                    disabled={!selectedLocation}
                   >
                     <i className="fas fa-plus"></i> Add Serial
                   </Button>
@@ -475,11 +309,13 @@ function LoadOut({ onSave, Username = localStorage.getItem("fullname"), children
                 <Table bordered hover size="sm" className="mb-0">
                   <thead className="bg-light">
                     <tr>
-                      <th style={{ width: '40%' }}>Serial Number</th>
-                      <th style={{ width: '20%' }}>Part Number</th>
+                      <th style={{ width: '20%' }}>Serial Number</th>
+                      <th style={{ width: '15%' }}>Part Number</th>
                       <th style={{ width: '20%' }}>Part Name</th>
+                      <th style={{ width: '15%' }}>Location</th>
+                      <th style={{ width: '15%' }}>Store Name</th>
                       <th style={{ width: '10%' }}>Quantity</th>
-                      <th style={{ width: '10%' }}>Action</th>
+                      <th style={{ width: '5%' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -526,7 +362,6 @@ function LoadOut({ onSave, Username = localStorage.getItem("fullname"), children
                               }
                             }}
                             placeholder="Enter Serial..."
-                            disabled={!selectedLocation}
                           />
                         </td>
                         <td>
@@ -535,6 +370,7 @@ function LoadOut({ onSave, Username = localStorage.getItem("fullname"), children
                             type="text"
                             value={item.part_num || ''}
                             readOnly
+                            className="bg-light"
                           />
                         </td>
                         <td>
@@ -543,6 +379,25 @@ function LoadOut({ onSave, Username = localStorage.getItem("fullname"), children
                             type="text"
                             value={item.part_name || ''}
                             readOnly
+                            className="bg-light"
+                          />
+                        </td>
+                        <td>
+                          <Form.Control
+                            size="sm"
+                            type="text"
+                            value={item.location || ''}
+                            readOnly
+                            className="bg-light"
+                          />
+                        </td>
+                        <td>
+                          <Form.Control
+                            size="sm"
+                            type="text"
+                            value={item.store_name || ''}
+                            readOnly
+                            className="bg-light"
                           />
                         </td>
                         <td>
@@ -555,6 +410,7 @@ function LoadOut({ onSave, Username = localStorage.getItem("fullname"), children
                             value={item.quantity}
                             onChange={(e) => updateSerialQuantity(index, parseInt(e.target.value) || 1)}
                           />
+                          <small className="text-muted">Max: {item.max_quantity || 0}</small>
                         </td>
                         <td className="text-center">
                           <Button
@@ -585,7 +441,11 @@ function LoadOut({ onSave, Username = localStorage.getItem("fullname"), children
             <Button variant="secondary" onClick={handleClose}>
               <b>Close</b>
             </Button>
-            <Button type="submit" variant="danger" disabled={!selectedLocation || !selectedSerials.some(item => item.serial)}>
+            <Button 
+              type="submit" 
+              variant="danger" 
+              disabled={!selectedSerials.some(item => item.serial && item.location)}
+            >
               <b>Save</b>
             </Button>
           </Modal.Footer>

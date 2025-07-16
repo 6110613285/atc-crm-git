@@ -32,6 +32,8 @@ function LogHistory() {
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [sortField, setSortField] = useState("");
+    const [sortOrder, setSortOrder] = useState("asc");
 
     const itemsPerPage = 20;
 
@@ -148,7 +150,6 @@ function LogHistory() {
             case 'Borrow':
                 return <ArrowRepeat className="me-1" />;
             case 'Return':
-            case 'Give Back':
                 return <ArrowReturnLeft className="me-1" />;
             default:
                 return <BoxSeamFill className="me-1" />;
@@ -206,17 +207,18 @@ function LogHistory() {
                     fontSize: "0.8rem"
                 };
             case 'Return':
-                return {
-                    backgroundColor: "#8bc34a",
-                    color: "#fff",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: "6px 12px",
-                    borderRadius: "20px",
-                    fontWeight: "500",
-                    fontSize: "0.8rem"
-                }; case 'Borrow':
+  return {
+    backgroundColor: "#8bc34a",
+    color: "#fff",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "6px 12px",
+    borderRadius: "20px",
+    fontWeight: "500",
+    fontSize: "0.8rem"
+  };
+            case 'Borrow':
                 return {
                     backgroundColor: "#ffc107",
                     color: "#fff",
@@ -260,6 +262,48 @@ function LogHistory() {
             searchLogs();
         }
     };
+
+    const getSortIcon = (columnKey) => {
+  if (sortField !== columnKey) {
+    return (
+      <span style={{ color: "#888" }}>△</span>
+    );
+  }
+  return sortOrder === 'asc' ? (
+    <span style={{ color: "#00e676" }}>▲</span>
+  ) : (
+    <span style={{ color: "#00e676" }}>▼</span>
+  );
+};
+
+
+    const handleSort = (field) => {
+  let order = "asc";
+  if (sortField === field && sortOrder === "asc") {
+    order = "desc";
+  }
+  setSortField(field);
+  setSortOrder(order);
+
+  const sortedLogs = [...logs].sort((a, b) => {
+    let aField = a[field] || "";
+    let bField = b[field] || "";
+
+    // ถ้าเป็นวันที่ ให้เทียบเป็น date object
+    if (field === "date") {
+      aField = new Date(aField);
+      bField = new Date(bField);
+    }
+
+    if (aField < bField) return order === "asc" ? -1 : 1;
+    if (aField > bField) return order === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  setLogs(sortedLogs);
+  paginate(1, sortedLogs);
+};
+
 
     const customDatePickerStyles = {
         input: {
@@ -367,7 +411,7 @@ function LogHistory() {
                                     <option value="OUT">OUT</option>
                                     <option value="Receive">Receive</option>
                                     <option value="Borrow">Borrow</option>
-                                    <option value="Give Back">Give Back</option>
+                                    <option value="Return">Return</option>
                                 </Form.Select>
                             </div>
 
@@ -407,21 +451,101 @@ function LogHistory() {
                         <div className="table-responsive">
                             <Table hover className="m-0 align-middle table-dark">
                                 <thead style={{ backgroundColor: "#1e1e1e" }}>
-                                    <tr className="text-center">
-                                        <th className="py-3 px-4" style={{ color: "#e0e0e0", borderBottom: "1px solid #444" }}>No.</th>
-                                        <th className="py-3 px-4" style={{ color: "#e0e0e0", borderBottom: "1px solid #444" }}>Date/Time</th>
-                                        <th className="py-3 px-4" style={{ color: "#e0e0e0", borderBottom: "1px solid #444" }}>User</th>
-                                        <th className="py-3 px-4" style={{ color: "#e0e0e0", borderBottom: "1px solid #444" }}>Status</th>
-                                        <th className="py-3 px-4" style={{ color: "#e0e0e0", borderBottom: "1px solid #444" }}>Part Number</th>
-                                        <th className="py-3 px-4" style={{ color: "#e0e0e0", borderBottom: "1px solid #444" }}>Part Name</th>
-                                        <th className="py-3 px-4" style={{ color: "#e0e0e0", borderBottom: "1px solid #444" }}>Serial Number</th>
-                                        <th className="py-3 px-4" style={{ color: "#e0e0e0", borderBottom: "1px solid #444" }}>Location</th>
-                                        <th className="py-3 px-4" style={{ color: "#e0e0e0", borderBottom: "1px solid #444" }}>Store Name</th>
-                                        <th className="py-3 px-4" style={{ color: "#e0e0e0", borderBottom: "1px solid #444" }}>Qty</th>
-                                        <th className="py-3 px-4" style={{ color: "#e0e0e0", borderBottom: "1px solid #444" }}>Supplier</th>
-                                        <th className="py-3 px-4" style={{ color: "#e0e0e0", borderBottom: "1px solid #444" }}>Note</th>
-                                    </tr>
-                                </thead>
+  <tr className="text-center">
+    <th className="py-3 px-4" style={{ color: "#e0e0e0", borderBottom: "1px solid #444" }}>
+      No.
+    </th>
+
+    <th
+      className="py-3 px-4"
+      style={{ cursor: "pointer", color: "#e0e0e0", borderBottom: "1px solid #444" }}
+      onClick={() => handleSort("date")}
+    >
+      Date/Time {getSortIcon("date")}
+    </th>
+
+    <th
+      className="py-3 px-4"
+      style={{ cursor: "pointer", color: "#e0e0e0", borderBottom: "1px solid #444" }}
+      onClick={() => handleSort("User")}
+    >
+      User {getSortIcon("User")}
+    </th>
+
+    <th
+      className="py-3 px-4"
+      style={{ cursor: "pointer", color: "#e0e0e0", borderBottom: "1px solid #444" }}
+      onClick={() => handleSort("status")}
+    >
+      Status {getSortIcon("status")}
+    </th>
+
+    <th
+      className="py-3 px-4"
+      style={{ cursor: "pointer", color: "#e0e0e0", borderBottom: "1px solid #444" }}
+      onClick={() => handleSort("part_num")}
+    >
+      Part Number {getSortIcon("part_num")}
+    </th>
+
+    <th
+      className="py-3 px-4"
+      style={{ cursor: "pointer", color: "#e0e0e0", borderBottom: "1px solid #444" }}
+      onClick={() => handleSort("part_name")}
+    >
+      Part Name {getSortIcon("part_name")}
+    </th>
+
+    <th
+      className="py-3 px-4"
+      style={{ cursor: "pointer", color: "#e0e0e0", borderBottom: "1px solid #444" }}
+      onClick={() => handleSort("serial_num")}
+    >
+      Serial Number {getSortIcon("serial_num")}
+    </th>
+
+    <th
+      className="py-3 px-4"
+      style={{ cursor: "pointer", color: "#e0e0e0", borderBottom: "1px solid #444" }}
+      onClick={() => handleSort("location")}
+    >
+      Location {getSortIcon("location")}
+    </th>
+
+    <th
+      className="py-3 px-4"
+      style={{ cursor: "pointer", color: "#e0e0e0", borderBottom: "1px solid #444" }}
+      onClick={() => handleSort("store_name")}
+    >
+      Store Name {getSortIcon("store_name")}
+    </th>
+
+    <th
+      className="py-3 px-4"
+      style={{ cursor: "pointer", color: "#e0e0e0", borderBottom: "1px solid #444" }}
+      onClick={() => handleSort("part_qty")}
+    >
+      Qty {getSortIcon("part_qty")}
+    </th>
+
+    <th
+      className="py-3 px-4"
+      style={{ cursor: "pointer", color: "#e0e0e0", borderBottom: "1px solid #444" }}
+      onClick={() => handleSort("supplier")}
+    >
+      Supplier {getSortIcon("supplier")}
+    </th>
+
+    <th
+      className="py-3 px-4"
+      style={{ cursor: "pointer", color: "#e0e0e0", borderBottom: "1px solid #444" }}
+      onClick={() => handleSort("note")}
+    >
+      Note {getSortIcon("note")}
+    </th>
+  </tr>
+</thead>
+
 
                                 <tbody>
                                     {isLoading ? (

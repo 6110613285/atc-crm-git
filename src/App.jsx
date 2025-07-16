@@ -31,7 +31,10 @@ import Locationmanage from "./Stockpage/locationmanage";
 import ReceivePart from "./Stockpage/Receivepart";
 import LogHistory from "./Stockpage/log";
 import BorrowPage from "./Stockpage/borrowpage";
-
+import Bucket from "./Stockpage/Bucket";
+import FixListPage from "./productPage/Fixlist";
+import PcLog from "./productPage/Pclog";
+import AdminUser from "./Stockpage/AdminUser";
 
 
 import "./app.css";
@@ -108,7 +111,11 @@ function App() {
             <Route path="/Receive" element={<ReceivePart />}></Route>
             <Route path="/logs" element={<LogHistory />}></Route>
             <Route path="/Borrow" element={<BorrowPage />}></Route>
-
+            <Route path="/Bucket" element={<Bucket />}></Route>
+            <Route path="/Fix" element={<FixListPage />}></Route>
+            <Route path="/AdminUser" element={<AdminUser />}></Route>
+            <Route path="/pc-log" element={<PcLog />} />
+            
             <Route
               path="/SelectedCompany"
               element={<CompanySelectedPage />}
