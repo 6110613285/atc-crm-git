@@ -3104,7 +3104,7 @@ else if ($action == "addPcLog") {
         if ($picture && !empty($picture) && $picture !== 'NULL') {
             $normalizedPath = str_replace("\\", "/", $picture);
             $normalizedPath = ltrim($normalizedPath, '/');  // ✅ ป้องกัน /
-            $fullUrl = "http://" . $_SERVER['HTTP_HOST'] . "/atc-crm-api/uploads/" . basename($normalizedPath);
+            $fullUrl = "http://" . $_SERVER['HTTP_HOST'] . "/ERP/atc-crm-api/uploads/" . basename($normalizedPath);
             $images[] = $fullUrl;
         }
     }
@@ -3142,7 +3142,7 @@ else if ($action == "addPcLog") {
         if ($picture && !empty($picture) && $picture !== 'NULL') {
             $normalizedPath = str_replace("\\", "/", $picture);
             $normalizedPath = ltrim($normalizedPath, '/');  // ✅ ป้องกัน /
-            $fullUrl = "http://" . $_SERVER['HTTP_HOST'] . "/atc-crm-api/uploads/" . basename($normalizedPath);
+            $fullUrl = "http://" . $_SERVER['HTTP_HOST'] . "/ERP/atc-crm-api/uploads/" . basename($normalizedPath);
             $images[] = $fullUrl;
         }
     }

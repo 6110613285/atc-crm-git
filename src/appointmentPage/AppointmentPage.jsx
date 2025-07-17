@@ -41,12 +41,9 @@ function AppointmentPage() {
     try {
       if (cal_id) {
         const res = await fetch(
-          `${import.meta.env.VITE_SERVER}/Appointment.php?server=${
-            userInfo.server_db
-          }&username=${userInfo.username_db}&password=${
-            userInfo.password_db
-          }&db=${
-            userInfo.name_db
+          `${import.meta.env.VITE_SERVER}/Appointment.php?server=${userInfo.server_db
+          }&username=${userInfo.username_db}&password=${userInfo.password_db
+          }&db=${userInfo.name_db
           }&action=getwherecalidcusid&callRecordId=${cal_id}&customerId=${cus_id}&sort=DESC&start=${dtStart}&end=${dtEnd}`,
           {
             method: "GET",
@@ -62,12 +59,9 @@ function AppointmentPage() {
         }
       } else if (cus_id) {
         const res = await fetch(
-          `${import.meta.env.VITE_SERVER}/Appointment.php?server=${
-            userInfo.server_db
-          }&username=${userInfo.username_db}&password=${
-            userInfo.password_db
-          }&db=${
-            userInfo.name_db
+          `${import.meta.env.VITE_SERVER}/Appointment.php?server=${userInfo.server_db
+          }&username=${userInfo.username_db}&password=${userInfo.password_db
+          }&db=${userInfo.name_db
           }&action=getwherecusid&customerId=${cus_id}&sort=DESC&start=${dtStart}&end=${dtEnd}`,
           {
             method: "GET",
@@ -84,12 +78,9 @@ function AppointmentPage() {
       } else {
         if (userInfo.position == "Newsale") {
           const res = await fetch(
-            `${import.meta.env.VITE_SERVER}/Appointment.php?server=${
-              userInfo.server_db
-            }&username=${userInfo.username_db}&password=${
-              userInfo.password_db
-            }&db=${userInfo.name_db}&action=getnewsale&userId=${
-              userInfo.user_id
+            `${import.meta.env.VITE_SERVER}/Appointment.php?server=${userInfo.server_db
+            }&username=${userInfo.username_db}&password=${userInfo.password_db
+            }&db=${userInfo.name_db}&action=getnewsale&userId=${userInfo.user_id
             }&sort=DESC&start=${dtStart}&end=${dtEnd}`,
             {
               method: "GET",
@@ -105,12 +96,9 @@ function AppointmentPage() {
           }
         } else {
           const res = await fetch(
-            `${import.meta.env.VITE_SERVER}/Appointment.php?server=${
-              userInfo.server_db
-            }&username=${userInfo.username_db}&password=${
-              userInfo.password_db
-            }&db=${
-              userInfo.name_db
+            `${import.meta.env.VITE_SERVER}/Appointment.php?server=${userInfo.server_db
+            }&username=${userInfo.username_db}&password=${userInfo.password_db
+            }&db=${userInfo.name_db
             }&action=get&sort=DESC&start=${dtStart}&end=${dtEnd}`,
             {
               method: "GET",
@@ -137,10 +125,8 @@ function AppointmentPage() {
     //console.log(id);
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_SERVER}/Customer.php?server=${
-          userInfo.server_db
-        }&username=${userInfo.username_db}&password=${
-          userInfo.password_db
+        `${import.meta.env.VITE_SERVER}/Customer.php?server=${userInfo.server_db
+        }&username=${userInfo.username_db}&password=${userInfo.password_db
         }&db=${userInfo.name_db}&action=get&sort=DESC`,
         {
           method: "GET",
@@ -220,10 +206,8 @@ function AppointmentPage() {
     } else { */
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_SERVER}/Company.php?server=${
-          userInfo.server_db
-        }&username=${userInfo.username_db}&password=${
-          userInfo.password_db
+        `${import.meta.env.VITE_SERVER}/Company.php?server=${userInfo.server_db
+        }&username=${userInfo.username_db}&password=${userInfo.password_db
         }&db=${userInfo.name_db}&action=get&sort=ASC`,
         {
           method: "GET",
@@ -263,10 +247,8 @@ function AppointmentPage() {
   const getProject = async (id) => {
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_SERVER}/Project.php?server=${
-          userInfo.server_db
-        }&username=${userInfo.username_db}&password=${
-          userInfo.password_db
+        `${import.meta.env.VITE_SERVER}/Project.php?server=${userInfo.server_db
+        }&username=${userInfo.username_db}&password=${userInfo.password_db
         }&db=${userInfo.name_db}&action=getwherecusid&id=${id}`,
         {
           method: "GET",
@@ -320,9 +302,8 @@ function AppointmentPage() {
   const addAfterVisitDetailAppointment = async () => {
     /* Date Time Now */
     const today = new Date();
-    const date = `${today.getFullYear()}-${
-      today.getMonth() + 1
-    }-${today.getDate()}`;
+    const date = `${today.getFullYear()}-${today.getMonth() + 1
+      }-${today.getDate()}`;
     const time = `${today.getHours()}:${today.getMinutes()}:${today.getSeconds()}`;
     const dt = `${date} ${time}`;
 
@@ -330,12 +311,9 @@ function AppointmentPage() {
     /* Date Time Now */
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_SERVER}/Appointment.php?server=${
-          userInfo.server_db
-        }&username=${userInfo.username_db}&password=${
-          userInfo.password_db
-        }&db=${
-          userInfo.name_db
+        `${import.meta.env.VITE_SERVER}/Appointment.php?server=${userInfo.server_db
+        }&username=${userInfo.username_db}&password=${userInfo.password_db
+        }&db=${userInfo.name_db
         }&action=updateaftervisitdetail&id=${appointmentId}&aftervisitdetail=${afterVisitDetail}&dtvisit=${dt}`,
         {
           method: "POST",
@@ -529,6 +507,7 @@ function AppointmentPage() {
               <th>Before visit Detail</th>
               <th>Status</th>
               <th>After Visit Detail</th>
+              <th>Last Update</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -583,6 +562,7 @@ function AppointmentPage() {
                   )}
 
                   <td>{appointment.app_aftervisit_detail}</td>
+                  <td>{appointment.app_dt_visit}</td>
                   <td>
                     <Button
                       onClick={() => {
@@ -641,7 +621,6 @@ function AppointmentPage() {
                     <b>After Visit Detail</b>
                   </Form.Label>
                   <Form.Control
-                    value={afterVisitDetail}
                     as="textarea"
                     type="text"
                     placeholder="After Visit Detail"
