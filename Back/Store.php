@@ -3114,6 +3114,44 @@ else if ($action == "addPcLog") {
         "images" => $images
     ], JSON_UNESCAPED_SLASHES);
     mysqli_close($link);
+} else if ($action == "getPartImages") {
+    ini_set('display_errors', 1);
+    ini_set('display_startup_errors', 1);
+    error_reporting(E_ALL);
+
+    $partNum = $_GET['partNum'] ?? '';
+    if (!$partNum) {
+        echo json_encode(["status" => "error", "message" => "No partNum provided"]);
+        mysqli_close($link);
+        return;
+    }
+
+    $partNum = mysqli_real_escape_string($link, $partNum);
+    $sql = "SELECT picture FROM tb_part_no WHERE part_num = '$partNum'";
+    $result = mysqli_query($link, $sql);
+
+    if (!$result) {
+        echo json_encode(["status" => "error", "message" => "Database query failed"]);
+        mysqli_close($link);
+        return;
+    }
+
+    $images = [];
+    while ($row = mysqli_fetch_assoc($result)) {
+        $picture = $row['picture'];
+        if ($picture && !empty($picture) && $picture !== 'NULL') {
+            $normalizedPath = str_replace("\\", "/", $picture);
+            $normalizedPath = ltrim($normalizedPath, '/');  // ✅ ป้องกัน /
+            $fullUrl = "http://" . $_SERVER['HTTP_HOST'] . "/atc-crm-api/uploads/" . basename($normalizedPath);
+            $images[] = $fullUrl;
+        }
+    }
+
+    echo json_encode([
+        "status" => "success",
+        "images" => $images
+    ], JSON_UNESCAPED_SLASHES);
+    mysqli_close($link);
 }else {
     echo json_encode("fail");
     mysqli_close($link);

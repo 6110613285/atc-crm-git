@@ -11,6 +11,9 @@ import ReturnItem from "../Stockpage/Returnaction";
 import { useSearchParams } from 'react-router-dom';
 import { Cart } from "react-bootstrap-icons";
 import { useNavigate } from "react-router-dom";
+import PartImageModal from "../Stockpage/PartImageModal";
+import { Images } from "lucide-react";
+
 import {
   Search,
   XCircle,
@@ -39,9 +42,16 @@ function LogStock() {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
-
+  const [selectedPartNum, setSelectedPartNum] = useState(null);
+  const [showModal, setShowModal] = useState(false);
   const itemsPerPage = 15;
-
+  const showImageModal = (partNum) => {
+    setSelectedPartNum(partNum);
+    setShowModal(true);
+  };
+  const hideImageModal = () => {
+    setShowModal(false)
+  };
   // ฟังก์ชันดึงข้อมูล stock parts
   const fetchStockParts = async () => {
     try {
@@ -609,7 +619,7 @@ function LogStock() {
                           </Button>
                         </div>
                       </th>
-
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Image</th>
                       <th className="py-3" style={{ color: "#e0e0e0" }}>
                         <div className="d-flex justify-content-center align-items-center gap-1">
                           Stock Qty
@@ -678,6 +688,22 @@ function LogStock() {
                             </Button>
                           </td>
                           <td>{item.part_num}</td>
+                          <td>
+                            <Button
+                              variant="success"
+                              size="sm"
+                              onClick={() => showImageModal(item.part_num)}
+                              style={{
+                                borderRadius: "6px",
+                                backgroundColor: "#28a745",
+                                borderColor: "#28a745"
+                              }}
+                              title="แสดงรูปภาพ"
+                            >
+                              <Images size={16} style={{ color: '#ffffff' }}/>
+                            </Button>
+                          </td>
+                          
                           <td>{item.stock_qty || item.qty}</td>
                           <td>{item.store_name}</td>
                           <td>{item.supplier || '-'}</td>
@@ -691,6 +717,11 @@ function LogStock() {
                       ))
                     )}
                   </tbody>
+                  <PartImageModal
+                  partNum={selectedPartNum}
+                  show={showModal}
+                  onClose={hideImageModal}
+                  />
                 </Table>
               </div>
 

@@ -68,10 +68,8 @@ function QuotationPage() {
 
       try {
         const res = await fetch(
-          `${import.meta.env.VITE_SERVER}/Quotation.php?server=${
-            userInfo.server_db
-          }&username=${userInfo.username_db}&password=${
-            userInfo.password_db
+          `${import.meta.env.VITE_SERVER}/Quotation.php?server=${userInfo.server_db
+          }&username=${userInfo.username_db}&password=${userInfo.password_db
           }&db=${userInfo.name_db}&action=getwhereqoid&id=${fullId}`,
           {
             method: "GET",
@@ -101,38 +99,43 @@ function QuotationPage() {
     }
   };
   const getProduct = async () => {
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_SERVER}/Product.php?server=${
-          userInfo.server_db
-        }&username=${userInfo.username_db}&password=${
-          userInfo.password_db
-        }&db=db_atc_crm&action=get&table=tb_product`,
-        {
-          method: "GET",
-        }
-      );
-      const data = await res.json();
-      
-      if (data === null) {
-        setProducts([]);
-      } else {
-        setProducts(data);
+  try {
+    const res = await fetch(
+      `${import.meta.env.VITE_SERVER}/Product.php?server=${userInfo.server_db}&username=${userInfo.username_db}&password=${userInfo.password_db}&db=db_atc_crm&action=get&table=tb_product`,
+      {
+        method: "GET",
       }
-    } catch (err) {
-      console.log(err);
+    );
+    const data = await res.json();
+    
+    console.log('Products data from API:', data); // Debug ข้อมูลที่ได้จาก API
+
+    if (data === null) {
+      setProducts([]);
+    } else {
+      setProducts(data);
+      // Debug ตัวอย่างข้อมูล product แรก
+      if (data.length > 0) {
+        console.log('Sample product:', data[0]);
+        console.log('Price fields available:', {
+          '1price': data[0]['1price'],
+          '10price': data[0]['10price'], 
+          '100price': data[0]['100price'],
+        });
+      }
     }
-  };
+  } catch (err) {
+    console.log(err);
+  }
+};
   /* Get Customer Data */
   const [customers, setCustomers] = useState([]);
   const getCustomer = async (co_id) => {
     try {
       if (cus_id) {
         const res = await fetch(
-          `${import.meta.env.VITE_SERVER}/Customer.php?server=${
-            userInfo.server_db
-          }&username=${userInfo.username_db}&password=${
-            userInfo.password_db
+          `${import.meta.env.VITE_SERVER}/Customer.php?server=${userInfo.server_db
+          }&username=${userInfo.username_db}&password=${userInfo.password_db
           }&db=${userInfo.name_db}&action=getwherecusid&id=${cus_id}`,
           {
             method: "GET",
@@ -151,10 +154,8 @@ function QuotationPage() {
         }
       } else if (co_id) {
         const res = await fetch(
-          `${import.meta.env.VITE_SERVER}/Customer.php?server=${
-            userInfo.server_db
-          }&username=${userInfo.username_db}&password=${
-            userInfo.password_db
+          `${import.meta.env.VITE_SERVER}/Customer.php?server=${userInfo.server_db
+          }&username=${userInfo.username_db}&password=${userInfo.password_db
           }&db=${userInfo.name_db}&action=getwherecoid&id=${co_id}`,
           {
             method: "GET",
@@ -178,10 +179,8 @@ function QuotationPage() {
     try {
       if (co_id) {
         const res = await fetch(
-          `${import.meta.env.VITE_SERVER}/Company.php?server=${
-            userInfo.server_db
-          }&username=${userInfo.username_db}&password=${
-            userInfo.password_db
+          `${import.meta.env.VITE_SERVER}/Company.php?server=${userInfo.server_db
+          }&username=${userInfo.username_db}&password=${userInfo.password_db
           }&db=${userInfo.name_db}&action=getwherecoid&id=${co_id}`,
           {
             method: "GET",
@@ -201,10 +200,8 @@ function QuotationPage() {
         }
       } else {
         const res = await fetch(
-          `${import.meta.env.VITE_SERVER}/Company.php?server=${
-            userInfo.server_db
-          }&username=${userInfo.username_db}&password=${
-            userInfo.password_db
+          `${import.meta.env.VITE_SERVER}/Company.php?server=${userInfo.server_db
+          }&username=${userInfo.username_db}&password=${userInfo.password_db
           }&db=${userInfo.name_db}&action=get&sort=DESC`,
           {
             method: "GET",
@@ -230,10 +227,8 @@ function QuotationPage() {
     try {
       if (pj_id) {
         const res = await fetch(
-          `${import.meta.env.VITE_SERVER}/Project.php?server=${
-            userInfo.server_db
-          }&username=${userInfo.username_db}&password=${
-            userInfo.password_db
+          `${import.meta.env.VITE_SERVER}/Project.php?server=${userInfo.server_db
+          }&username=${userInfo.username_db}&password=${userInfo.password_db
           }&db=${userInfo.name_db}&action=getwherepjid&id=${pj_id}`,
           {
             method: "GET",
@@ -252,10 +247,8 @@ function QuotationPage() {
         }
       } else if (cus_id) {
         const res = await fetch(
-          `${import.meta.env.VITE_SERVER}/Project.php?server=${
-            userInfo.server_db
-          }&username=${userInfo.username_db}&password=${
-            userInfo.password_db
+          `${import.meta.env.VITE_SERVER}/Project.php?server=${userInfo.server_db
+          }&username=${userInfo.username_db}&password=${userInfo.password_db
           }&db=${userInfo.name_db}&action=getwherecusid&id=${cus_id}`,
           {
             method: "GET",
@@ -276,7 +269,7 @@ function QuotationPage() {
   /* Get Project Data */
   /* Get Product Data */
   const [products, setProducts] = useState([]);
-  
+
   /* Get Product Data */
 
   const [validated, setValidated] = useState(false);
@@ -322,32 +315,19 @@ function QuotationPage() {
     console.log(overallRef.current.value); */
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_SERVER}/Quotation.php?server=${
-          userInfo.server_db
-        }&username=${userInfo.username_db}&password=${
-          userInfo.password_db
-        }&db=${
-          userInfo.name_db
-        }&action=insert&quotationId=${qoId}&reviseid=00&customerId=${
-          cus_id ? customerRef.current.value : customer[0].cus_id
-        }&projectId=${
-          pj_id ? projectRef.current.value : project[0].pj_id
-        }&companyId=${
-          co_id ? companyRef.current.value : company[0].co_id
-        }&currency=${currency}&issue_date=${rearrangedDate}&quotationvalidunit=${
-          quotationvalidunitRef.current.value
-        }&quotationvalidunitunit=${
-          quotationvalidunitunitRef.current.value
-        }&creditterm=${credittermRef.current.value}&leadtime=${
-          leadTimeRef.current.value
-        }&timeunit=${timeunitRef.current.value}&saler=${
-          userInfo.user_id
-        }&totalprice=${totalPriceRef.current.value}&percentdiscount=${
-          percentDiscountRef.current.value
-        }&discount=${discountRef.current.value}&priceafterdiscount=${
-          priceAfterDiscountRef.current.value
-        }&vat=${vatRef.current.value}&withholding=${
-          withHoldingRef.current.value
+        `${import.meta.env.VITE_SERVER}/Quotation.php?server=${userInfo.server_db
+        }&username=${userInfo.username_db}&password=${userInfo.password_db
+        }&db=${userInfo.name_db
+        }&action=insert&quotationId=${qoId}&reviseid=00&customerId=${cus_id ? customerRef.current.value : customer[0].cus_id
+        }&projectId=${pj_id ? projectRef.current.value : project[0].pj_id
+        }&companyId=${co_id ? companyRef.current.value : company[0].co_id
+        }&currency=${currency}&issue_date=${rearrangedDate}&quotationvalidunit=${quotationvalidunitRef.current.value
+        }&quotationvalidunitunit=${quotationvalidunitunitRef.current.value
+        }&creditterm=${credittermRef.current.value}&leadtime=${leadTimeRef.current.value
+        }&timeunit=${timeunitRef.current.value}&saler=${userInfo.user_id
+        }&totalprice=${totalPriceRef.current.value}&percentdiscount=${percentDiscountRef.current.value
+        }&discount=${discountRef.current.value}&priceafterdiscount=${priceAfterDiscountRef.current.value
+        }&vat=${vatRef.current.value}&withholding=${withHoldingRef.current.value
         }&overall=${overallRef.current.value}&statusapprove=wait`,
         {
           method: "POST",
@@ -364,14 +344,10 @@ function QuotationPage() {
           const pd_id = el.name.split("-");
 
           const res = await fetch(
-            `${import.meta.env.VITE_SERVER}/Quotation.php?server=${
-              userInfo.server_db
-            }&username=${userInfo.username_db}&password=${
-              userInfo.password_db
-            }&db=${
-              userInfo.name_db
-            }&action=insertitem&quotationId=${qoId}&reviseid=00&productId=${
-              pd_id[0]
+            `${import.meta.env.VITE_SERVER}/Quotation.php?server=${userInfo.server_db
+            }&username=${userInfo.username_db}&password=${userInfo.password_db
+            }&db=${userInfo.name_db
+            }&action=insertitem&quotationId=${qoId}&reviseid=00&productId=${pd_id[0]
             }&item_qty=${el.qty}`,
             {
               method: "POST",
@@ -536,11 +512,10 @@ function QuotationPage() {
 
   const sumToTotalPrice = async () => {
     let totalPrice = 0;
-    rows.map((row) => {
-      totalPrice = totalPrice + row.sumprice;
+    rows.forEach((row) => {
+      totalPrice = totalPrice + parseFloat(row.sumprice || 0);
     });
     totalPriceRef.current.value = totalPrice;
-    //console.log(totalPriceRef.current.value);
   };
 
   // const handleDiscount = async () => {
@@ -580,29 +555,6 @@ function QuotationPage() {
       withHoldingRef.current.value = withholdingPrice;
     }
   };
-
-  /* Dynamic rows */
-  const [rows, setRows] = useState([
-    /* { id: 0, name: '', des: '', price: '', qty: '', sumprice: ''}, */
-  ]);
-
-  const addRow = () => {
-    if (rows == []) {
-      setRows({ id: 0, name: "", des: "", price: "", qty: "", sumprice: "" });
-    } else {
-      const newRow = {
-        id: rows.length,
-        name: "",
-        des: "",
-        price: "",
-        qty: "",
-        sumprice: "",
-      };
-      setRows([...rows, newRow]);
-    }
-    //console.log(rows);
-  };
-
   const deleteTableRows = async (idToRemove) => {
     const updatedRows = rows.filter((row) => row.id != idToRemove);
     await setRows(updatedRows);
@@ -623,33 +575,135 @@ function QuotationPage() {
   const handlecheckedWithHolding = async (e) => {
     setIsCheckWithHolding(e.target.checked);
   };
+  // Helper function to get CPU addon price
+  const getCpuAddon = (cpu) => {
+    switch (cpu) {
+      case "Core I5 Gen8": return 5000;
+      case "Core I7 Gen8": return 10000;
+      case "Core I5 Gen 12": return 15000;
+      case "Core I7 Gen 12": return 20000;
+      default: return 0; // J4125 is default
+    }
+  };
+
+  // Helper function to get RAM addon price
+  const getRamAddon = (ram) => {
+    switch (ram) {
+      case "16GB": return 2000;
+      case "32GB": return 6000;
+      case "64GB": return 12000;
+      default: return 0; // 8GB is default
+    }
+  };
+
+  // Helper function to get SSD addon price
+  const getSsdAddon = (ssd) => {
+    switch (ssd) {
+      case "256GB": return 2000;
+      case "512GB": return 6000;
+      case "1TB": return 12000;
+      default: return 0; // 128GB is default
+    }
+  };
+
+  // Helper function to get base price based on quantity
+  const getBasePrice = (product, qty) => {
+  if (!product) return 0;
+  
+  console.log('Product data:', product); // Debug ข้อมูล product
+  console.log('Quantity:', qty); // Debug quantity
+
+  if (qty >= 100) {
+    return parseFloat(product['100price'] || product.pd_100price || 0);
+  } else if (qty >= 10) {
+    return parseFloat(product['10price'] || product.pd_10price || 0);
+  }else if (qty > 0) {
+    return parseFloat(product['1price'] || product.pd_1price || 0);
+  } else {
+    return parseFloat(0);
+  }
+};
+
+  // Main price calculation function
+  const calculatePrice = async (rowIndex) => {
+    const row = rows[rowIndex];
+    if (!row) return;
+
+    // Find the selected product
+    const productName = row.name || "";
+    const productId = productName.split("-")[0];
+    console.log("productId"+productId)
+    const selectedProduct = products.find(p => productId);
+    console.log("selectedProduct "+selectedProduct)
+    const qty = parseInt(row.qty) || 0;
+    const cpu = row.cpu || "J4125";
+    const ram = row.ram || "8GB";
+    const ssd = row.ssd || "128GB";
+    
+    // Calculate base price based on quantity tiers
+    const basePrice = getBasePrice(selectedProduct, qty);
+
+    // Calculate addon prices
+    const cpuAddon = getCpuAddon(cpu);
+    const ramAddon = getRamAddon(ram);
+    const ssdAddon = getSsdAddon(ssd);
+
+    // Calculate final unit price
+    const unitPrice = basePrice + cpuAddon + ramAddon + ssdAddon;
+    console.log("unitPrice "+unitPrice)
+    // Calculate sum price
+    const sumPrice = unitPrice * qty;
+
+    // Update the row
+    await handleRowChange(unitPrice.toFixed(2), rowIndex, "price");
+    await handleRowChange(sumPrice.toFixed(2), rowIndex, "sumprice");
+    
+    // เพิ่มบรรทัดนี้ - อัพเดท total price หลังจากคำนวณเสร็จ
+    await sumToTotalPrice();
+
+    // เพิ่มการคำนวณ discount และ overall
+    if (discountRef.current.value !== "") {
+      await handleDiscountChange(discountRef.current.value);
+    } else if (percentDiscountRef.current.value !== "") {
+      await handlePercentChange(percentDiscountRef.current.value);
+    }
+    await calOverall();
+  };
+  const [rows, setRows] = useState([]);
+  // Update the rows state structure to include new fields
+  const addRow = () => {
+    if (rows.length === 0) {
+      setRows([{
+        id: 0,
+        name: "",
+        des: "",
+        cpu: "J4125",
+        ram: "8GB",
+        ssd: "128GB",
+        qty: "",
+        price: "",
+        sumprice: ""
+      }]);
+    } else {
+      const newRow = {
+        id: rows.length,
+        name: "",
+        des: "",
+        cpu: "J4125",
+        ram: "8GB",
+        ssd: "128GB",
+        qty: "",
+        price: "",
+        sumprice: "",
+      };
+      setRows([...rows, newRow]);
+    }
+  };
 
   const renderRow = (row, rowIndex) => (
     <tr key={rowIndex + 1}>
       <td className="text-center">{rowIndex + 1}</td>
       <td>
-        {/* <Form.Group as={Col} md="12">
-          <Form.Select
-            required
-            onChange={async (e) => {
-              const split = e.target.value.split("|");
-              //console.log(split[1]);
-              await handleRowChange(split[0], rowIndex, "name");
-              await handleRowChange(split[1], rowIndex, "des"); //add description product
-              await handleRowChange(split[2], rowIndex, "price"); //add sell price product
-            }}
-          >
-            <option value={""}>--Select Product--</option>{" "}
-           
-            {products.map((product, index) => (
-              <option
-                className="fw-bold"
-                key={index + 1}
-                value={`${product.pd_id}-${product.pd_name}|${product.pd_description}|${product.pd_sellprice}`}
-              >{`${product.pd_id}-${product.pd_name}`}</option>
-            ))}
-        </td>  </Form.Select>
-        </Form.Group> */}
         <Form.Group as={Col} md="12">
           <Typeahead
             id="basic-typeahead-single"
@@ -662,93 +716,140 @@ function QuotationPage() {
                   // Handle custom input
                   await handleRowChange(selected[0].label, rowIndex, "name");
                   await handleRowChange("", rowIndex, "des");
+                  await handleRowChange("J4125", rowIndex, "cpu");
+                  await handleRowChange("8GB", rowIndex, "ram");
+                  await handleRowChange("128GB", rowIndex, "ssd");
                   await handleRowChange("", rowIndex, "price");
                 } else {
                   // Handle selected product
                   const split = selected[0].value.split("|");
                   await handleRowChange(split[0], rowIndex, "name");
-                  await handleRowChange(split[1], rowIndex, "des");
-                  await handleRowChange(split[2], rowIndex, "price");
+                  await handleRowChange(split[1], rowIndex, "des"); // detail column
+                  await handleRowChange(split[2], rowIndex, "cpu"); // CPU column
+                  await handleRowChange(split[3], rowIndex, "ram"); // RAM column
+                  await handleRowChange(split[4], rowIndex, "ssd"); // SSD column
+                  // คำนวณราคาใหม่หลังจากเลือกสินค้า
+                  await calculatePrice(rowIndex);
                 }
               }
             }}
             options={products.map((product) => ({
-              value: `${product.pd_id}-${product.pd_name}|${product.pd_description}|${product.pd_sellprice}`,
-              label: `${product.pd_id}-${product.pd_name}`,
+              value: `${product.pd_id}-${product.pd_name}|${product.detail}|${product.CPU}|${product.ram}|${product.ssd}|${product.pd_sellprice}`,
+              label: `${product.pd_name} (${product.screen_size}")`,
             }))}
             placeholder="Select or type product name"
           />
         </Form.Group>
-        </td>
+      </td>
 
-        <td>
-          <Form.Group as={Col} md="12">
-            <Form.Control 
-              required 
-              type="text" 
-              value={row.des} 
-              onChange={(e) => handleRowChange(e.target.value, rowIndex, "des")}
-            />
-          </Form.Group>
-        </td>
-        <td>
-          <Form.Group as={Col} md="12">
-            <Form.Control 
-              required 
-              type="number" 
-              value={row.price} 
-              onChange={(e) => handleRowChange(e.target.value, rowIndex, "price")}
-            />
-          </Form.Group>
-        </td>
-        <td>
-          <Form.Group as={Col} md="12">
-            <Form.Control
-              required
-              type="number"
-              value={row.qty}
-              onChange={async (e) => {
-                await handleRowChange(e.target.value, rowIndex, "qty");
-                await handleRowChange(
-                  row.price * e.target.value,
-                  rowIndex,
-                  "sumprice"
-                );
-                await sumToTotalPrice();
-                if (discountRef.current.value !== "") {
-                  await handleDiscountChange(discountRef.current.value);
-                } else if (percentDiscountRef.current.value !== "") {
-                  await handlePercentChange(percentDiscountRef.current.value);
-                }
+      <td>
+        <Form.Group as={Col} md="12">
+          <Form.Control
+            required
+            type="text"
+            value={row.des}
+            onChange={(e) => handleRowChange(e.target.value, rowIndex, "des")}
+            placeholder="Enter description"
+          />
+        </Form.Group>
+      </td>
 
-                await calOverall();
-              }}
-            />
-          </Form.Group>
-        </td>
-        <td>
-          <Form.Group as={Col} md="12">
-            <Form.Control
-              required
-              type="number"
-              value={row.sumprice}
-              onChange={(e) => handleRowChange(e.target.value, rowIndex, "sumprice")}
-            />
-          </Form.Group>
-        </td>
+      <td>
+        <Form.Group as={Col} md="12">
+          <Form.Select
+            required
+            value={row.cpu || "J4125"}
+            onChange={async (e) => {
+              await handleRowChange(e.target.value, rowIndex, "cpu");
+              await calculatePrice(rowIndex);
+            }}
+          >
+            <option value="J4125">J4125</option>
+            <option value="Core I5 Gen8">Core I5 Gen8 (+5,000)</option>
+            <option value="Core I7 Gen8">Core I7 Gen8 (+10,000)</option>
+            <option value="Core I5 Gen 12">Core I5 Gen 12 (+15,000)</option>
+            <option value="Core I7 Gen 12">Core I7 Gen 12 (+20,000)</option>
+          </Form.Select>
+        </Form.Group>
+      </td>
+
+      <td>
+        <Form.Group as={Col} md="12">
+          <Form.Select
+            required
+            value={row.ram || "8GB"}
+            onChange={async (e) => {
+              await handleRowChange(e.target.value, rowIndex, "ram");
+              await calculatePrice(rowIndex);
+            }}
+          >
+            <option value="8GB">8GB</option>
+            <option value="16GB">16GB (+2,000)</option>
+            <option value="32GB">32GB (+6,000)</option>
+            <option value="64GB">64GB (+12,000)</option>
+          </Form.Select>
+        </Form.Group>
+      </td>
+
+      <td>
+        <Form.Group as={Col} md="12">
+          <Form.Select
+            required
+            value={row.ssd || "128GB"}
+            onChange={async (e) => {
+              await handleRowChange(e.target.value, rowIndex, "ssd");
+              await calculatePrice(rowIndex);
+            }}
+          >
+            <option value="128GB">128GB</option>
+            <option value="256GB">256GB (+2,000)</option>
+            <option value="512GB">512GB (+6,000)</option>
+            <option value="1TB">1TB (+12,000)</option>
+          </Form.Select>
+        </Form.Group>
+      </td>
+
+      <td>
+        <Form.Group as={Col} md="12">
+          <Form.Control
+            required
+            type="number"
+            value={row.qty}
+            onChange={async (e) => {
+              await handleRowChange(e.target.value, rowIndex, "qty");
+              await calculatePrice(rowIndex); // เพิ่มบรรทัดนี้
+            }}
+          />
+        </Form.Group>
+      </td>
+
+      <td>
+        <Form.Group as={Col} md="12">
+          <Form.Control
+            required
+            type="number"
+            value={row.price}
+            readOnly // เพิ่ม readOnly เพื่อไม่ให้แก้ไขได้
+          />
+        </Form.Group>
+      </td>
+
+      <td>
+        <Form.Group as={Col} md="12">
+          <Form.Control
+            required
+            type="number"
+            value={row.sumprice}
+            readOnly
+          />
+        </Form.Group>
+      </td>
       <td className="d-flex justify-content-center">
         <button
           type="button"
           className="btn btn-danger "
-          onClick={async (e) => {
-            await handleRowChange(e.target.value, rowIndex, "qty");
-            await handleRowChange(
-              row.price * e.target.value,
-              rowIndex,
-              "sumprice"
-            );
+          onClick={async () => {
             await sumToTotalPrice();
-
             await calOverall();
             deleteTableRows(row.id);
           }}
@@ -1207,8 +1308,11 @@ function QuotationPage() {
                         <th>No.</th>
                         <th>Name</th>
                         <th>Description</th>
-                        <th>Price</th>
+                        <th>CPU</th>
+                        <th>RAM</th>
+                        <th>SSD</th>
                         <th>QTY</th>
+                        <th>Price</th>
                         <th>Sum Price</th>
                         <th>
                           <button

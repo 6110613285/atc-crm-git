@@ -5,6 +5,8 @@ import Addpart from "../Stockpage/addpart";
 import Upimage from "../Stockpage/Upimage";
 import PartImageModal from "../Stockpage/PartImageModal";
 import Swal from "sweetalert2";
+import { Camera } from "lucide-react";
+import { Images } from "lucide-react";
 
 import EditModal from "../Stockpage/EditModal";
 import { Pencil } from "react-bootstrap-icons";
@@ -415,7 +417,7 @@ function ManageSerialPage() {
                       style={{
                         borderRadius: "6px",
                         boxShadow: "none",
-                        minWidth: "1000px",
+                        minWidth: "100%", //กำหนดขนาดช่องค้นหา
                         backgroundColor: "#333333",
                         color: "#e0e0e0",
                         border: "1px solid #444444"
@@ -669,13 +671,14 @@ function ManageSerialPage() {
                                     borderColor: "#fb8c00"
                                   }}
                                 >
-                                  <Pencil size={16} />
+                                  <Pencil size={16} style={{ color: '#ffffff' }} />
                                 </Button>
                               </EditModal>
+
+                              {/* icon กล้อง */}
                               <Button
                                 variant="info"
                                 size="sm"
-                                className="ms-1"
                                 style={{
                                   borderRadius: "6px",
                                   backgroundColor: "#0091ea",
@@ -683,8 +686,11 @@ function ManageSerialPage() {
                                 }}
                                 onClick={() => handleOpenUploadModal(part)}
                               >
-                                🖼️
+                                <Camera size={16} style={{ color: '#ffffff' }} />
+
                               </Button>
+
+                              {/* ลบ */}
                               <Button
                                 variant="danger"
                                 size="sm"
@@ -695,15 +701,8 @@ function ManageSerialPage() {
                                 }}
                                 onClick={() => deletePart(part.part_num)}
                               >
-                                <Trash size={16} />
+                                <Trash size={16} style={{ color: '#ffffff' }} />
                               </Button>
-                              {/* {showUploadModal && (
-                                <Upimage
-                                  onClose={() => setShowUploadModal(false)}
-                                  defaultPartNum={selectedPartForUpload}  // ✅ ส่งไป Upimage
-                                />
-                              )} */}
-
                             </div>
                           </td>
 
@@ -720,7 +719,7 @@ function ManageSerialPage() {
                               }}
                               title="แสดงรูปภาพ"
                             >
-                              <Plus size={16} />
+                              <Images size={16} style={{ color: '#ffffff' }}/>
                             </Button>
                           </td>
                         </tr>

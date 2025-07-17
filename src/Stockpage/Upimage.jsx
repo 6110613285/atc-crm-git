@@ -1,15 +1,19 @@
-import React, { useState,useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Camera, Upload, X, CheckCircle, Video, VideoOff } from "lucide-react";
+
 const Upimage = ({ onClose, defaultPartNum = "" }) => {
   const [file, setFile] = useState(null);
   const [partNum, setPartNum] = useState(defaultPartNum);
   const [imagePreview, setImagePreview] = useState(null);
   const [cameraOn, setCameraOn] = useState(false);
   const [hoveredButton, setHoveredButton] = useState(null);
+
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
+
   console.log(defaultPartNum);
+
   // เปิดหรือปิดกล้อง
   const handleToggleCamera = async () => {
     if (cameraOn) {
@@ -69,6 +73,7 @@ const Upimage = ({ onClose, defaultPartNum = "" }) => {
         handleCloseCamera();
       });
   };
+
   const handleUpload = async () => {
     if (!file || !defaultPartNum) {
       console.log(defaultPartNum);
@@ -78,7 +83,8 @@ const Upimage = ({ onClose, defaultPartNum = "" }) => {
     const formData = new FormData();
     formData.append("image", file);
     formData.append("part_num", defaultPartNum);
-     try {
+
+    try {
       const response = await fetch(`${import.meta.env.VITE_SERVER}/Upload.php`, {
         method: "POST",
         body: formData,
@@ -102,27 +108,30 @@ const Upimage = ({ onClose, defaultPartNum = "" }) => {
       alert("❌ เกิดข้อผิดพลาดในการอัปโหลด");
     }
   };
+
+  // ใช้สไตล์จากชุดโค้ดที่ 1
   const containerStyle = {
-    background: 'rgba(17, 24, 39, 0.95)',
+    background: 'transparent',
     padding: '32px',
-    borderRadius: '16px',
+    borderRadius: '12px',
+    border: '2px solid #22c55e', // เพิ่มเส้นขอบสีเขียว
     color: '#ffffff',
     width: '100%',
-    maxWidth: '500px',
+    maxWidth: '700px', // เพิ่มขนาดจาก 500px เป็น 600px
+    // marginTop: '20px',    // ระยะห่างจากขอบบน
+    // marginBottom: '200x', // ระยะห่างจากขอบล่าง
     margin: '0 auto',
     display: 'flex',
     flexDirection: 'column',
     gap: '24px',
     alignItems: 'center',
-    minHeight: '600px',
-    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)',
-    border: '1px solid rgba(34, 197, 94, 0.2)'
+    minHeight: '600px'
   };
 
   const titleStyle = {
     fontSize: '28px',
     fontWeight: '700',
-    color: '#22c55e',
+    color: '#ffffff',
     textAlign: 'center',
     marginBottom: '8px',
     display: 'flex',
@@ -140,15 +149,15 @@ const Upimage = ({ onClose, defaultPartNum = "" }) => {
     marginBottom: '8px',
     fontSize: '14px',
     fontWeight: '600',
-    color: '#d1d5db'
+    color: '#cccccc'
   };
 
   const inputStyle = {
     width: '100%',
     padding: '14px 16px',
-    borderRadius: '8px',
-    background: '#374151',
-    border: '1px solid #4b5563',
+    borderRadius: '6px',
+    background: '#2a2a2a',
+    border: '1px solid #444444',
     outline: 'none',
     color: '#ffffff',
     fontSize: '16px',
@@ -159,9 +168,9 @@ const Upimage = ({ onClose, defaultPartNum = "" }) => {
   const fileInputStyle = {
     width: '100%',
     padding: '14px 16px',
-    borderRadius: '8px',
-    background: '#374151',
-    border: '1px solid #4b5563',
+    borderRadius: '6px',
+    background: '#2a2a2a',
+    border: '1px solid #444444',
     color: '#ffffff',
     fontSize: '14px',
     cursor: 'pointer',
@@ -179,11 +188,11 @@ const Upimage = ({ onClose, defaultPartNum = "" }) => {
   };
 
   const videoStyle = {
-    borderRadius: '12px',
+    borderRadius: '8px',
     width: '100%',
     maxWidth: '400px',
-    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
-    border: '2px solid #22c55e',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+    border: '1px solid #444444',
     display: cameraOn ? 'block' : 'none',
     backgroundColor: '#000000',
     objectFit: 'cover'
@@ -193,16 +202,16 @@ const Upimage = ({ onClose, defaultPartNum = "" }) => {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    background: cameraOn ? '#ef4444' : '#22c55e',
+    background: cameraOn ? '#ef4444' : '#6b7280',
     color: '#ffffff',
     fontWeight: '600',
     padding: '12px 24px',
-    borderRadius: '8px',
+    borderRadius: '6px',
     border: 'none',
     cursor: 'pointer',
     fontSize: '16px',
     transition: 'all 0.3s ease',
-    boxShadow: cameraOn ? '0 4px 12px rgba(239, 68, 68, 0.3)' : '0 4px 12px rgba(34, 197, 94, 0.3)',
+    boxShadow: cameraOn ? '0 2px 8px rgba(239, 68, 68, 0.3)' : '0 2px 8px rgba(107, 114, 128, 0.3)',
     minWidth: '160px',
     justifyContent: 'center'
   };
@@ -211,16 +220,16 @@ const Upimage = ({ onClose, defaultPartNum = "" }) => {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    background: '#10b981',
+    background: '#f59e0b',
     color: '#ffffff',
     fontWeight: '600',
     padding: '12px 24px',
-    borderRadius: '8px',
+    borderRadius: '6px',
     border: 'none',
     cursor: 'pointer',
     fontSize: '16px',
     transition: 'all 0.3s ease',
-    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+    boxShadow: '0 2px 8px rgba(245, 158, 11, 0.3)',
     minWidth: '160px',
     justifyContent: 'center'
   };
@@ -235,7 +244,7 @@ const Upimage = ({ onClose, defaultPartNum = "" }) => {
     color: '#ffffff',
     fontWeight: '600',
     padding: '16px 24px',
-    borderRadius: '8px',
+    borderRadius: '6px',
     border: 'none',
     cursor: 'pointer',
     fontSize: '18px',
@@ -253,16 +262,16 @@ const Upimage = ({ onClose, defaultPartNum = "" }) => {
   const previewTitleStyle = {
     fontWeight: '600',
     marginBottom: '12px',
-    color: '#22c55e',
+    color: '#cccccc',
     fontSize: '16px'
   };
 
   const previewImageStyle = {
-    borderRadius: '12px',
-    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+    borderRadius: '8px',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
     width: '100%',
     maxWidth: '400px',
-    border: '2px solid #22c55e',
+    border: '1px solid #444444',
     backgroundColor: '#000000',
     objectFit: 'cover'
   };
@@ -271,9 +280,47 @@ const Upimage = ({ onClose, defaultPartNum = "" }) => {
     <div style={containerStyle}>
       <h2 style={titleStyle}>
         <Camera size={32} />
-        📷 อัปโหลดหรือถ่ายรูป
+        อัปโหลดหรือถ่ายรูป
       </h2>
-       <div style={inputContainerStyle}>
+      <div style={buttonContainerStyle}>
+        {/* ✅ <video> Render ตลอด ไม่โดนลบ */}
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          style={videoStyle}
+        />
+        {cameraOn && (
+          <button
+            onClick={handleTakePhoto}
+            style={{
+              ...captureButtonStyle,
+              ...(hoveredButton === 'capture' ? { transform: 'translateY(-2px)' } : {})
+            }}
+            onMouseEnter={() => setHoveredButton('capture')}
+            onMouseLeave={() => setHoveredButton(null)}
+          >
+            <Camera size={20} />
+            take a photo
+          </button>
+        )}
+        <button
+          onClick={handleToggleCamera}
+          style={{
+            ...primaryButtonStyle,
+            ...(hoveredButton === 'camera' ? { transform: 'translateY(-2px)' } : {})
+          }}
+          onMouseEnter={() => setHoveredButton('camera')}
+          onMouseLeave={() => setHoveredButton(null)}
+        >
+          {cameraOn ? <VideoOff size={20} /> : <Video size={20} />}
+          {cameraOn ? "Close" : "Open"}
+        </button>
+
+        
+      </div>
+
+      <div style={inputContainerStyle}>
         <label style={labelStyle}>เลือกรูปจากเครื่อง</label>
         <input
           type="file"
@@ -288,49 +335,8 @@ const Upimage = ({ onClose, defaultPartNum = "" }) => {
           style={fileInputStyle}
         />
       </div>
-      <div style={buttonContainerStyle}>
-        {/* ✅ <video> Render ตลอด ไม่โดนลบ */}
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          style={videoStyle}
-        />
 
-        <button
-          onClick={handleToggleCamera}
-          style={{
-            ...primaryButtonStyle,
-            ...(hoveredButton === 'camera' ? {
-              transform: 'translateY(-2px)',
-              boxShadow: cameraOn ? '0 6px 16px rgba(239, 68, 68, 0.4)' : '0 6px 16px rgba(34, 197, 94, 0.4)'
-            } : {})
-          }}
-          onMouseEnter={() => setHoveredButton('camera')}
-          onMouseLeave={() => setHoveredButton(null)}
-        >
-          {cameraOn ? <VideoOff size={20} /> : <Video size={20} />}
-          {cameraOn ? "ปิดกล้อง" : "เปิดกล้อง"}
-        </button>
-
-        {cameraOn && (
-          <button
-            onClick={handleTakePhoto}
-            style={{
-              ...captureButtonStyle,
-              ...(hoveredButton === 'capture' ? {
-                transform: 'translateY(-2px)',
-                boxShadow: '0 6px 16px rgba(16, 185, 129, 0.4)'
-              } : {})
-            }}
-            onMouseEnter={() => setHoveredButton('capture')}
-            onMouseLeave={() => setHoveredButton(null)}
-          >
-            <Camera size={20} />
-            ถ่ายรูป
-          </button>
-        )}
-      </div>
+      
 
       {imagePreview && (
         <div style={previewContainerStyle}>
@@ -350,11 +356,14 @@ const Upimage = ({ onClose, defaultPartNum = "" }) => {
         }}
         onMouseEnter={() => setHoveredButton('upload')}
         onMouseLeave={() => setHoveredButton(null)}
-      ><Upload size={20} />
-        อัปโหลด
+      >
+        <Upload size={20} />
+        Uplode
       </button>
-       <canvas ref={canvasRef} style={{ display: "none" }} />
+
+      <canvas ref={canvasRef} style={{ display: "none" }} />
     </div>
   );
 };
+
 export default Upimage;

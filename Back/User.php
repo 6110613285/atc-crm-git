@@ -509,78 +509,61 @@ function createUser($pdo) {
 // Function to update user
 function updateUser($pdo) {
     try {
-        // Handle both JSON input and GET parameters for backward compatibility
-        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-
-        if (!isset($input['id']) || empty($input['id'])) {
+    // Get parameters from GET request
+        $name = $_GET['name'];
+        $surname = $_GET['surname'];
+        $nameth = $_GET['nameth'];
+        $surnameth = $_GET['surnameth'];
+        $department = $_GET['department'];
+        $position = $_GET['position'];
+        $tel = $_GET['tel'];
+        $token = $_GET['token'];
+        
+        // Check if token is provided
+        if (!isset($token) || empty($token)) {
             http_response_code(400);
             echo json_encode([
                 'success' => false,
-                'message' => 'User ID is required for update'
-            ]);
-            return;
-        }
-
-        // Validate ENUM values
-        $validLevels = ['user', 'admin'];
-        $validStatuses = ['activation', '0'];
-
-        // Clean and validate level
-        $level = isset($input['level']) && in_array($input['level'], $validLevels) ? $input['level'] : null;
-        // Clean and validate status
-        $status = isset($input['status']) && in_array($input['status'], $validStatuses) ? $input['status'] : null;
-
-        $sql = "UPDATE tb_user SET ";
-        $params = [':id' => $input['id']];
-        $fields = [];
-
-        if (isset($input['username'])) { $fields[] = "username = :username"; $params[':username'] = trim($input['username']); }
-        if (isset($input['password'])) { $fields[] = "password = :password"; $params[':password'] = trim($input['password']); }
-        if (isset($input['fname'])) { $fields[] = "fname = :fname"; $params[':fname'] = trim($input['fname']); }
-        if (isset($input['lname'])) { $fields[] = "lname = :lname"; $params[':lname'] = trim($input['lname']); }
-        if (isset($input['fnameth'])) { $fields[] = "fnameth = :fnameth"; $params[':fnameth'] = trim($input['fnameth']); }
-        if (isset($input['lnameth'])) { $fields[] = "lnameth = :lnameth"; $params[':lnameth'] = trim($input['lnameth']); }
-        if (isset($input['tel'])) { $fields[] = "tel = :tel"; $params[':tel'] = trim($input['tel']); }
-        if (isset($input['email'])) { $fields[] = "email = :email"; $params[':email'] = trim($input['email']); }
-        if (isset($input['department'])) { $fields[] = "department = :department"; $params[':department'] = trim($input['department']); }
-        if (isset($input['position'])) { $fields[] = "position = :position"; $params[':position'] = trim($input['position']); }
-        if ($level !== null) { $fields[] = "level = :level"; $params[':level'] = $level; }
-        if (isset($input['server_db'])) { $fields[] = "server_db = :server_db"; $params[':server_db'] = trim($input['server_db']); }
-        if (isset($input['username_db'])) { $fields[] = "username_db = :username_db"; $params[':username_db'] = trim($input['username_db']); }
-        if (isset($input['name_db'])) { $fields[] = "name_db = :name_db"; $params[':name_db'] = trim($input['name_db']); }
-        if ($status !== null) { $fields[] = "status = :status"; $params[':status'] = $status; }
-        if (isset($input['zone'])) { $fields[] = "zone = :zone"; $params[':zone'] = trim($input['zone']); }
-        if (isset($input['token'])) { $fields[] = "token = :token"; $params[':token'] = $input['token']; }
-        if (isset($input['Roleuser'])) { // Added Roleuser update
-            $fields[] = "Roleuser = :Roleuser";
-            $params[':Roleuser'] = trim($input['Roleuser']);
-        }
-
-
-        if (empty($fields)) {
-            http_response_code(400);
-            echo json_encode([
-                'success' => false,
-                'message' => 'No fields to update'
+                'message' => 'Token is required for update'
             ]);
             return;
         }
         
-       $sql .= implode(", ", $fields) . " WHERE id = :id";
-
+        // Build SQL query with prepared statement
+        $sql = "UPDATE `tb_user` SET fname = :name, lname = :surname, fnameth = :nameth, lnameth = :surnameth, department = :department, position = :position, tel = :tel WHERE token = :token";
+        
+        // Execute query with PDO
         $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
-
-        if ($stmt->rowCount() > 0) {
-            echo json_encode([
-                'success' => true,
-                'message' => 'User updated successfully'
-            ]);
+        $result = $stmt->execute([
+            ':name' => $name,
+            ':surname' => $surname,
+            ':nameth' => $nameth,
+            ':surnameth' => $surnameth,
+            ':department' => $department,
+            ':position' => $position,
+            ':tel' => $tel,
+            ':token' => $token
+        ]);
+        
+        if ($result) {
+            // Check if any rows were affected
+            if ($stmt->rowCount() > 0) {
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'User updated successfully'
+                ]);
+            } else {
+                http_response_code(404);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'User not found or no changes made'
+                ]);
+            }
         } else {
-            http_response_code(404);
+            http_response_code(500);
             echo json_encode([
                 'success' => false,
-                'message' => 'User not found or no changes made'
+                'message' => 'Error updating user'
             ]);
         }
         

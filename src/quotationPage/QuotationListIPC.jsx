@@ -18,49 +18,30 @@ function QuotationList() {
 
   /* Get Qo Data */
   const [quotations, setQuotation] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const getQuotation = async () => {
     try {
-      if (pj_id) {
-        const res = await fetch(
-          `${import.meta.env.VITE_SERVER}/Quotation.php?server=${
-            userInfo.server_db
-          }&username=${userInfo.username_db}&password=${
-            userInfo.password_db
-          }&db=${userInfo.name_db}&action=getwherepjid&id=${pj_id}&sort=DESC`,
-          {
-            method: "GET",
-          }
-        );
-        const data = await res.json();
-        //console.log(data);
-        if (data === null) {
-          console.log("No Data A");
-          setQuotation([]);
-        } else {
-          setQuotation(data);
-        }
+      setLoading(true);
+      const endpoint = pj_id
+        ? `action=getwherepjid&id=${pj_id}&sort=DESC`
+        : `action=getipc&sort=DESC`;
+
+      const res = await fetch(`${import.meta.env.VITE_SERVER}/Quotation.php?${endpoint}`);
+      const data = await res.json();
+
+      // ตรวจสอบว่าข้อมูลเป็น Array หรือไม่
+      if (Array.isArray(data)) {
+        setQuotation(data);
       } else {
-        const res = await fetch(
-          `${import.meta.env.VITE_SERVER}/Quotation.php?server=${
-            userInfo.server_db
-          }&username=${userInfo.username_db}&password=${
-            userInfo.password_db
-          }&db=${userInfo.name_db}&action=getipc&sort=DESC`,
-          {
-            method: "GET",
-          }
-        );
-        const data = await res.json();
-        //console.log(data);
-        if (data === null) {
-          console.log("No Data B");
-          setQuotation([]);
-        } else {
-          setQuotation(data);
-        }
+        console.log("API returned non-array data:", data);
+        setQuotation([]);
       }
     } catch (err) {
-      console.log(err);
+      console.error("Error fetching quotations:", err);
+      setQuotation([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -70,10 +51,8 @@ function QuotationList() {
   const getProject = async () => {
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_SERVER}/Project.php?server=${
-          userInfo.server_db
-        }&username=${userInfo.username_db}&password=${
-          userInfo.password_db
+        `${import.meta.env.VITE_SERVER}/Project.php?server=${userInfo.server_db
+        }&username=${userInfo.username_db}&password=${userInfo.password_db
         }&db=${userInfo.name_db}&action=get&sort=ASC&status=all&salesId=all`,
         {
           method: "GET",
@@ -122,10 +101,8 @@ function QuotationList() {
   const getCustomer = async () => {
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_SERVER}/Customer.php?server=${
-          userInfo.server_db
-        }&username=${userInfo.username_db}&password=${
-          userInfo.password_db
+        `${import.meta.env.VITE_SERVER}/Customer.php?server=${userInfo.server_db
+        }&username=${userInfo.username_db}&password=${userInfo.password_db
         }&db=${userInfo.name_db}&action=get&sort=ASC`,
         {
           method: "GET",
@@ -158,10 +135,8 @@ function QuotationList() {
   const getCompany = async () => {
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_SERVER}/Company.php?server=${
-          userInfo.server_db
-        }&username=${userInfo.username_db}&password=${
-          userInfo.password_db
+        `${import.meta.env.VITE_SERVER}/Company.php?server=${userInfo.server_db
+        }&username=${userInfo.username_db}&password=${userInfo.password_db
         }&db=${userInfo.name_db}&action=get&sort=ASC`,
         {
           method: "GET",
@@ -199,10 +174,8 @@ function QuotationList() {
       ////console.log(qo_id);
       try {
         const res = await fetch(
-          `${import.meta.env.VITE_SERVER}/Quotation.php?server=${
-            userInfo.server_db
-          }&username=${userInfo.username_db}&password=${
-            userInfo.password_db
+          `${import.meta.env.VITE_SERVER}/Quotation.php?server=${userInfo.server_db
+          }&username=${userInfo.username_db}&password=${userInfo.password_db
           }&db=${userInfo.name_db}&action=delete&id=${qo_id}`,
           {
             method: "GET",
@@ -230,10 +203,15 @@ function QuotationList() {
   const itemsPerPage = 10; // กำหนดจำนวนรายการต่อหน้า
 
   const paginate = (pageNumber) => {
+    if (!Array.isArray(quotations)) {
+      setCurrentPageData([]);
+      return;
+    }
+
     const startIndex = (pageNumber - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     setCurrentPageData(quotations.slice(startIndex, endIndex));
-    setCurrentPage(pageNumber); // เมื่อเปลี่ยนหน้าใหม่ ให้เปลี่ยน currentPage ให้ตรงกับหน้าใหม่
+    setCurrentPage(pageNumber);
   };
   // End Pagination
 
@@ -247,9 +225,10 @@ function QuotationList() {
   }, [userInfo]);
 
   useEffect(() => {
-    paginate(currentPage);
+    if (quotations && Array.isArray(quotations)) {
+      paginate(currentPage);
+    }
   }, [quotations]);
-
   return (
     <>
       <div className="mx-5">
@@ -475,7 +454,7 @@ function QuotationList() {
                       </Button> */}
 
                       {userInfo.level === "admin" &&
-                      qo.qo_status_approve == "wait" ? (
+                        qo.qo_status_approve == "wait" ? (
                         <Link
                           to="/QuotationApproveIPC"
                           state={{ qo_id: `${qo.qo_id}` }}

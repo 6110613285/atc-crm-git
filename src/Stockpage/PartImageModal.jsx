@@ -57,13 +57,14 @@ function PartImageModal({ partNum, show, onClose }) {
         marginTop: '20px'
     };
 
+    // เปลี่ยนจาก fixed size เป็น flexible size ปรับให้ย่อขยายตามขนาดจริงรูปภาพ 
     const imageStyle = {
-        width: '200px',
-        height: '150px',
-        objectFit: 'cover',
+        maxWidth: '100%',
+        height: 'auto',
         borderRadius: '8px',
         border: '2px solid #4a5568',
-        transition: 'transform 0.2s ease, border-color 0.2s ease'
+        transition: 'transform 0.2s ease, border-color 0.2s ease',
+        cursor: 'pointer'
     };
 
     const imageHoverStyle = {
