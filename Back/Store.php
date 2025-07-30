@@ -2303,7 +2303,7 @@ else if ($action == "deleteProduct") {
     // วิธีที่ 1: ใช้ ROW_NUMBER() (MySQL 8.0+)
     $sql = "SELECT * FROM (
                 SELECT *, 
-                       ROW_NUMBER() OVER (PARTITION BY fixID ORDER BY date DESC) as rn
+                       ROW_NUMBER() OVER (PARTITION BY fixID ORDER BY id DESC) as rn
                 FROM tb_fixlist
             ) ranked
             WHERE rn = 1
@@ -2420,26 +2420,47 @@ else if ($action == "addFixItem") {
         return;
     }
 
-    // เพิ่มข้อมูลใหม่
-    $sql = "INSERT INTO `tb_fixlist` (
-                `Status`, `Location`, `date`, `fixID`, `Modal`, `Cpu`, `Mainboard`, 
-                `SN`, `Customer`, `symptom`, `did`, `equipinsite`, `sender`, `receiver`
-            ) VALUES (
-                '$status', '$location', '$date', '$fixID', '$modal', '$cpu', '$mainboard',
-                '$sn', '$customer', '$symptom', '$did', '$equipinsite', '$sender', '$receiver'
-            )";
+    // เริ่มการทำธุรกรรม (Transaction)
+    mysqli_begin_transaction($link);
 
-    $result = mysqli_query($link, $sql);
+    try {
+        // เพิ่มข้อมูลใหม่ใน tb_fixlist
+        $sql = "INSERT INTO `tb_fixlist` (
+                    `Status`, `Location`, `date`, `fixID`, `Modal`, `Cpu`, `Mainboard`, 
+                    `SN`, `Customer`, `symptom`, `did`, `equipinsite`, `sender`, `receiver`
+                ) VALUES (
+                    '$status', '$location', '$date', '$fixID', '$modal', '$cpu', '$mainboard',
+                    '$sn', '$customer', '$symptom', '$did', '$equipinsite', '$sender', '$receiver'
+                )";
 
-    if ($result) {
+        $result = mysqli_query($link, $sql);
+
+        if (!$result) {
+            throw new Exception("Error inserting fix item: " . mysqli_error($link));
+        }
+
+        // อัปเดต Product_status ใน tb_product ถ้า SN ตรงกับ AT_SN
+        if (!empty($sn)) {
+            $updateProductSQL = "UPDATE `tb_product` SET `Product_status` = 'ซ่อม' , `location` = '$location'  WHERE `AT_SN` = '$sn'";
+            $updateResult = mysqli_query($link, $updateProductSQL);
+            
+            if (!$updateResult) {
+                throw new Exception("Error updating product status: " . mysqli_error($link));
+            }
+                
+        }
+        // Commit transaction หากทุกอย่างสำเร็จ
+        mysqli_commit($link);
         echo json_encode("ok");
-    } else {
-        echo json_encode("error: " . mysqli_error($link));
+
+    } catch (Exception $e) {
+        // Rollback หากเกิดข้อผิดพลาด
+        mysqli_rollback($link);
+        echo json_encode("error: " . $e->getMessage());
     }
 
     mysqli_close($link);
 }
-
 // ฟังก์ชันแก้ไข Fix Item
 else if ($action == "updateFixItem") {
    
@@ -2466,26 +2487,57 @@ else if ($action == "updateFixItem") {
         return;
     }
 
-    // อัพเดทข้อมูล
-     $sql = "INSERT INTO tb_fixlist (
-                fixID, Status, Location, date, Modal, Cpu, Mainboard, SN,
-                Customer, symptom, did, equipinsite, sender, receiver
-            ) VALUES (
-                '$fixID', '$status', '$location', '$date', '$modal', '$cpu',
-                '$mainboard', '$sn', '$customer', '$symptom', '$did', '$equipinsite',
-                '$sender', '$receiver'
-            )";
+    // เริ่มการทำธุรกรรม (Transaction)
+    mysqli_begin_transaction($link);
 
-    $result = mysqli_query($link, $sql);
+    try {
+        // เพิ่มข้อมูลใหม่ในตาราง tb_fixlist (เพิ่ม record ใหม่)
+        $sql = "INSERT INTO tb_fixlist (
+                    fixID, Status, Location, date, Modal, Cpu, Mainboard, SN,
+                    Customer, symptom, did, equipinsite, sender, receiver
+                ) VALUES (
+                    '$fixID', '$status', '$location', '$date', '$modal', '$cpu',
+                    '$mainboard', '$sn', '$customer', '$symptom', '$did', '$equipinsite',
+                    '$sender', '$receiver'
+                )";
 
-    if ($result) {
+        $result = mysqli_query($link, $sql);
+
+        if (!$result) {
+            throw new Exception("Error inserting fix item: " . mysqli_error($link));
+        }
+
+        // อัปเดต Product_status ใน tb_product ถ้า SN ตรงกับ AT_SN
+        if (!empty($sn)) {
+            // ตรวจสอบสถานะและอัปเดตตามเงื่อนไข
+            if ($status === 'ซ่อมแล้ว ok') {
+                // ถ้าสถานะเป็น "ซ่อมแล้ว ok" ให้เปลี่ยน Product_status เป็น "OK"
+                $updateProductSQL = "UPDATE `tb_product` SET `Product_status` = 'OK', `location` = '$location' WHERE `AT_SN` = '$sn'";
+            } else {
+                // ถ้าสถานะอื่น ๆ ให้เปลี่ยน Product_status เป็น "ซ่อม"
+                $updateProductSQL = "UPDATE `tb_product` SET `Product_status` = 'ซ่อม', `location` = '$location' WHERE `AT_SN` = '$sn'";
+            }
+            
+            $updateResult = mysqli_query($link, $updateProductSQL);
+            
+            if (!$updateResult) {
+                throw new Exception("Error updating product status: " . mysqli_error($link));
+            }
+        }
+
+        // Commit transaction หากทุกอย่างสำเร็จ
+        mysqli_commit($link);
+        
         if (mysqli_affected_rows($link) > 0) {
             echo json_encode(array("status" => "success", "message" => "Fix item updated successfully"));
         } else {
-            echo json_encode(array("status" => "error", "message" => "No changes made or record not found"));
+            echo json_encode(array("status" => "success", "message" => "Fix item added successfully"));
         }
-    } else {
-        echo json_encode(array("status" => "error", "message" => "Error updating fix item: " . mysqli_error($link)));
+
+    } catch (Exception $e) {
+        // Rollback หากเกิดข้อผิดพลาด
+        mysqli_rollback($link);
+        echo json_encode(array("status" => "error", "message" => "Error updating fix item: " . $e->getMessage()));
     }
 
     mysqli_close($link);
@@ -2610,31 +2662,7 @@ else if ($action == "getFixListStats") {
     }
 
     mysqli_close($link);
-} else if ($action == "insertStock") {
-    $date = $_GET['date'];
-    $uname = $_GET['uname'];        // User column
-    $serial = $_GET['serial'];      // serial_num column
-    $partnum = $_GET['partnum'];    // part_num column
-    $partname = $_GET['partname'];  // part_name column
-    $parttype = $_GET['parttype'];  // part_type column
-    $partlo = $_GET['partlo'];      // part_location column
-    $qty = $_GET['qty'];            // qty column
-    $storeid = $_GET['storeid'];    // store_id column
-    $storename = $_GET['storename']; // store_name column
-    $note = $_GET['note'];          // note column
-    $status = $_GET['status'];      // status column
-
-
-    $sql = "INSERT INTO `tb_log_edit`(`date`, `User`, `serial_num`, `part_num`, `part_name`, `part_type`, `part_location`,`qty`,`store_id`,`store_name`,`note`,`status`) 
-            VALUES ('$date','$uname','$serial','$partnum','$partname','$parttype','$partlo','$qty','$storeid','$storename','$note','$status')";
-
-    $result = mysqli_query($link, $sql);
-
-    if ($result) {
-        echo json_encode("ok");
-    }
-    mysqli_close($link);
-}else if ($action == "updateStockItem") {
+} else if ($action == "updateStockItem") {
     $part_num = isset($_GET['part_num']) ? $_GET['part_num'] : '';
     $part_name = isset($_GET['part_name']) ? $_GET['part_name'] : '';
     $supplier = isset($_GET['supplier']) ? $_GET['supplier'] : '';
