@@ -5,6 +5,8 @@ import Addpart from "../Stockpage/addpart";
 import Upimage from "../Stockpage/Upimage";
 import PartImageModal from "../Stockpage/PartImageModal";
 import Swal from "sweetalert2";
+import { FaCamera } from "react-icons/fa";
+
 
 import EditModal from "../Stockpage/EditModal";
 import { Pencil } from "react-bootstrap-icons";
@@ -97,11 +99,13 @@ function ManageSerialPage() {
 
     parts.forEach(part => {
       // ตรวจสอบ part_name
-      if (part.part_name?.toLowerCase().includes(searchInput) && !uniqueItems.has(part.part_name)) {
+      if (item.part_name?.toLowerCase().includes(searchInput) && !uniqueItems.has(item.part_name)) {
         allSuggestions.push({
-          text: part.part_name,
+          text: item.part_name,
           type: 'Part Name',
-          icon: '📦'
+          icon: '📦',
+          partNum: item.part_num, // เพิ่ม part_num สำหรับดึงรูปภาพ
+          hasImage: thumbnailMap[item.part_num] ? true : false
         });
         uniqueItems.add(part.part_name);
       }
@@ -310,7 +314,7 @@ function ManageSerialPage() {
     }
   };
   const handleOpenUploadModal = (part) => {
-    setSelectedPartForUpload(part.part_num);  // ✅ ส่งแค่ part_num (string)
+    setSelectedPartForUpload(part); // ส่ง object ทั้งหมดแทน part.part_num
     setShowUploadModal(true);
   };
 
@@ -371,6 +375,34 @@ function ManageSerialPage() {
       handleSearch();
     }
   };
+
+  const [thumbnailMap, setThumbnailMap] = useState({}); // เก็บ part_num → URL รูป
+
+  const fetchThumbnail = async (partNum) => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SERVER}/Store.php?action=getPartImages&partNum=${encodeURIComponent(partNum)}`
+      );
+      const data = await res.json();
+      if (data.status === "success" && data.images?.length > 0) {
+        setThumbnailMap((prev) => ({
+          ...prev,
+          [partNum]: data.images[0] // เอารูปแรกมาเป็น thumbnail
+        }));
+      }
+    } catch (err) {
+      console.error("เกิดข้อผิดพลาดในการดึง thumbnail:", err);
+    }
+  };
+  useEffect(() => {
+    parts.forEach((p) => {
+      if (!thumbnailMap[p.part_num]) {
+        fetchThumbnail(p.part_num);
+      }
+    });
+  }, [parts, thumbnailMap]);
+
+
 
   return (
     <div className="min-vh-100" style={{
@@ -683,7 +715,7 @@ function ManageSerialPage() {
                                 }}
                                 onClick={() => handleOpenUploadModal(part)}
                               >
-                                🖼️
+                                <FaCamera style={{ marginBottom: "2px" }} />
                               </Button>
                               <Button
                                 variant="danger"
@@ -697,32 +729,44 @@ function ManageSerialPage() {
                               >
                                 <Trash size={16} />
                               </Button>
-                              {/* {showUploadModal && (
-                                <Upimage
-                                  onClose={() => setShowUploadModal(false)}
-                                  defaultPartNum={selectedPartForUpload}  // ✅ ส่งไป Upimage
-                                />
-                              )} */}
-
                             </div>
                           </td>
 
                           {/* //img */}
-                          <td>
-                            <Button
-                              variant="success"
-                              size="sm"
-                              onClick={() => showImageModal(part.part_num)}
-                              style={{
-                                borderRadius: "6px",
-                                backgroundColor: "#28a745",
-                                borderColor: "#28a745"
-                              }}
-                              title="แสดงรูปภาพ"
-                            >
-                              <Plus size={16} />
-                            </Button>
+                          <td style={{ textAlign: "center" }}>
+                            {thumbnailMap[part.part_num] ? (
+                              <img
+                                src={thumbnailMap[part.part_num]}
+                                alt="preview"
+                                style={{
+                                  width: "100px",
+                                  height: "100px",
+                                  borderRadius: "4px",
+                                  objectFit: "cover",
+                                  cursor: "pointer",
+                                  border: "1px solid #ccc",
+                                }}
+                                onClick={() => showImageModal(part.part_num)}
+                                title="คลิกเพื่อดูทั้งหมด"
+                              />
+                            ) : (
+                              <Button
+                                variant="success"
+                                size="sm"
+                                onClick={() => showImageModal(part.part_num)}
+                                style={{
+                                  borderRadius: "px",
+                                  backgroundColor: "#28a745",
+                                  borderColor: "#28a745",
+                                }}
+                                title="ยังไม่มีรูปภาพ"
+                              >
+                                +
+                              </Button>
+                            )}
                           </td>
+
+
                         </tr>
                       ))}
                     </tbody>
@@ -768,8 +812,7 @@ function ManageSerialPage() {
         </Modal.Header>
         <Modal.Body style={{ backgroundColor: "#2a2a2a", padding: "0" }}>
           <Upimage
-            defaultPartNum={selectedPartForUpload}
-            // selectedPart={selectedPartForUpload}
+            defaultPartNum={selectedPartForUpload?.part_num} // ใส่ optional chaining
             onUploadSuccess={handleUploadSuccess}
             onClose={handleCloseUploadModal}
           />

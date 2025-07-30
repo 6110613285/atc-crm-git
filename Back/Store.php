@@ -8,6 +8,7 @@ header('Content-Type: application/json; charset=utf-8');
 $link = mysqli_connect('localhost', 'root', '', 'db_store');
 //$link = mysqli_connect('aliantechnology.com', 'cp615710_atc', 'Aliantechnology', "cp615710_atc_db");
 
+
 if (!$link) {
     echo "Error: Unable to connect to MySQL." . PHP_EOL;
     echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
