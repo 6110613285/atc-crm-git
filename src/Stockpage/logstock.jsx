@@ -3,6 +3,7 @@ import { FormControl, Button, Table, Card, Container, ListGroup } from "react-bo
 import { UserContext } from "../App";
 import PaginationComponent from "../components/PaginationComponent";
 import ItemDetailModal from "./ItemDetailModal";
+import PartImageModal from "../Stockpage/PartImageModal"; // เพิ่ม import
 import Swal from "sweetalert2";
 import LoadIn from "../Stockpage/loadin";
 import LoadOut from "../Stockpage/loadout";
@@ -40,7 +41,41 @@ function LogStock() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
 
+  // เพิ่มสถานะสำหรับรูปภาพ
+  const [thumbnailMap, setThumbnailMap] = useState({}); // เก็บ part_num → URL รูป
+  const [selectedPartNum, setSelectedPartNum] = useState(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+
   const itemsPerPage = 15;
+
+  // ฟังก์ชันจัดการ Image Modal
+  const showImageModalHandler = (partNum) => {
+    setSelectedPartNum(partNum);
+    setShowImageModal(true);
+  };
+
+  const hideImageModal = () => {
+    setShowImageModal(false);
+    setSelectedPartNum(null);
+  };
+
+  // ฟังก์ชันดึงรูปภาพ thumbnail
+  const fetchThumbnail = async (partNum) => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SERVER}/Store.php?action=getPartImages&partNum=${encodeURIComponent(partNum)}`
+      );
+      const data = await res.json();
+      if (data.status === "success" && data.images?.length > 0) {
+        setThumbnailMap((prev) => ({
+          ...prev,
+          [partNum]: data.images[0] // เอารูปแรกมาเป็น thumbnail
+        }));
+      }
+    } catch (err) {
+      console.error("เกิดข้อผิดพลาดในการดึง thumbnail:", err);
+    }
+  };
 
   // ฟังก์ชันดึงข้อมูล stock parts
   const fetchStockParts = async () => {
@@ -171,7 +206,6 @@ function LogStock() {
     );
   };
 
-
   const generateSuggestions = (input) => {
     if (!input || input.length < 1) {
       setSuggestions([]);
@@ -190,7 +224,9 @@ function LogStock() {
         allSuggestions.push({
           text: item.part_name,
           type: 'Part Name',
-          icon: '📦'
+          icon: '📦',
+          partNum: item.part_num, // เพิ่ม part_num สำหรับดึงรูปภาพ
+          hasImage: thumbnailMap[item.part_num] ? true : false
         });
         uniqueItems.add(item.part_name);
       }
@@ -358,6 +394,24 @@ function LogStock() {
     };
   }, []);
 
+  // useEffect สำหรับดึงรูปภาพ thumbnail
+  useEffect(() => {
+    currentPageData.forEach((item) => {
+      if (item.part_num && !thumbnailMap[item.part_num]) {
+        fetchThumbnail(item.part_num);
+      }
+    });
+  }, [currentPageData, thumbnailMap]);
+
+  // useEffect สำหรับดึงรูปภาพสำหรับ suggestions
+  useEffect(() => {
+    suggestions.forEach((suggestion) => {
+      if (suggestion.partNum && !thumbnailMap[suggestion.partNum]) {
+        fetchThumbnail(suggestion.partNum);
+      }
+    });
+  }, [suggestions, thumbnailMap]);
+
   useEffect(() => {
     if (userInfo) {
       fetchStockParts();
@@ -435,7 +489,6 @@ function LogStock() {
                   Stock Items
                 </h5>
 
-                {/* Search Section */}
                 {/* Search Section */}
                 <div className="d-flex flex-column flex-lg-row align-items-stretch align-lg-items-center gap-3 flex-grow-1">
                   <div className="position-relative flex-grow-1" ref={searchContainerRef} style={{ minWidth: "300px", maxWidth: "800px" }}>
@@ -519,7 +572,23 @@ function LogStock() {
                               padding: "8px 12px"
                             }}
                           >
-                            <span className="me-2">{suggestion.icon}</span>
+                            {/* แสดงรูปภาพสำหรับ Part Name (📦) หรือแสดงไอคอนปกติ */}
+                            {suggestion.icon === '📦' && suggestion.partNum && thumbnailMap[suggestion.partNum] ? (
+                              <img
+                                src={thumbnailMap[suggestion.partNum]}
+                                alt="part preview"
+                                style={{
+                                  width: "32px",
+                                  height: "32px",
+                                  borderRadius: "4px",
+                                  objectFit: "cover",
+                                  marginRight: "8px",
+                                  border: "1px solid #444444"
+                                }}
+                              />
+                            ) : (
+                              <span className="me-2">{suggestion.icon}</span>
+                            )}
                             <div className="flex-grow-1">
                               <div className="fw-medium">{suggestion.text}</div>
                               <small className="text-muted">{suggestion.type}</small>
@@ -568,6 +637,9 @@ function LogStock() {
                 <Table hover className="align-middle border table-dark" style={{ borderRadius: "8px", overflow: "hidden" }}>
                   <thead style={{ backgroundColor: "#333333" }}>
                     <tr className="text-center">
+                      {/* เพิ่มคอลัมน์รูปภาพที่อยู่หน้าคอลัมน์ Location */}
+                      <th className="py-3" style={{ color: "#e0e0e0" }}>Image</th>
+                      
                       <th className="py-3" style={{ color: "#e0e0e0" }}>
                         <div className="d-flex justify-content-center align-items-center gap-1">
                           Location
@@ -642,12 +714,10 @@ function LogStock() {
                     </tr>
                   </thead>
 
-
-
                   <tbody>
                     {currentPageData.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="text-center py-5" style={{ color: "#bdbdbd" }}>
+                        <td colSpan={8} className="text-center py-5" style={{ color: "#bdbdbd" }}>
                           <div className="d-flex flex-column align-items-center">
                             <BoxSeamFill size={40} className="mb-2 text-muted" />
                             <span className="fw-medium">No Data</span>
@@ -657,6 +727,47 @@ function LogStock() {
                     ) : (
                       currentPageData.map((item, index) => (
                         <tr key={index} className="text-center text-white">
+                          {/* คอลัมน์รูปภาพ */}
+                          <td style={{ textAlign: "center" }}>
+                            {thumbnailMap[item.part_num] ? (
+                              <img
+                                src={thumbnailMap[item.part_num]}
+                                alt="preview"
+                                style={{
+                                  width: "60px",
+                                  height: "60px",
+                                  borderRadius: "4px",
+                                  objectFit: "cover",
+                                  cursor: "pointer",
+                                  border: "1px solid #444444",
+                                }}
+                                onClick={() => showImageModalHandler(item.part_num)}
+                                title="คลิกเพื่อดูรูปภาพทั้งหมด"
+                              />
+                            ) : (
+                              <Button
+                                variant="outline-secondary"
+                                size="sm"
+                                onClick={() => showImageModalHandler(item.part_num)}
+                                style={{
+                                  width: "60px",
+                                  height: "60px",
+                                  borderRadius: "4px",
+                                  backgroundColor: "#333333",
+                                  borderColor: "#444444",
+                                  color: "#999999",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: "20px"
+                                }}
+                                title="ยังไม่มีรูปภาพ"
+                              >
+                                📷
+                              </Button>
+                            )}
+                          </td>
+                          
                           <td>
                             <Button
                               variant="link"
@@ -707,11 +818,20 @@ function LogStock() {
           </Card.Body>
         </Card>
       </Container>
+      
+      {/* Item Detail Modal */}
       <ItemDetailModal
         show={showItemDetail}
         onHide={() => setShowItemDetail(false)}
         partNum={selectedItemDetail.partNum}
         locationName={selectedItemDetail.locationName}
+      />
+      
+      {/* Part Image Modal */}
+      <PartImageModal
+        partNum={selectedPartNum}
+        show={showImageModal}
+        onClose={hideImageModal}
       />
     </div>
   );
