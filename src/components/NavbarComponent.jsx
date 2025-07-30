@@ -20,7 +20,7 @@ function NavbarComponent() {
       // Split the string by comma and trim any whitespace
       const parsedRoles = roleUserString.split(',').map(role => role.trim());
       setRoles(parsedRoles);
-    }else{
+    } else {
       console.log("ErrorROLE")
     }
   }, []); // Run once on component mount to get the initial role
@@ -329,9 +329,21 @@ function NavbarComponent() {
                           <b className="fs-5">Products</b>
                         </Nav.Link>
 
+                        <Nav.Link onClick={handleClose} as={Link} to="/SNproduct" className="my-menu d-flex align-items-center gap-3 p-4">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" className="bi bi-qr-code" viewBox="0 0 16 16">
+                            <path d="M2 2h2v2H2V2Z" />
+                            <path d="M6 0v6H0V0h6ZM5 1H1v4h4V1ZM4 12H2v2h2v-2Z" />
+                            <path d="M6 10v6H0v-6h6Zm-1 1H1v4h4v-4ZM12 2h2v2h-2V2Z" />
+                            <path d="M16 0v6h-6V0h6Zm-1 1h-4v4h4V1ZM8 8v1h1V8H8Z" />
+                            <path d="M10 7v1h1V7h-1ZM8 6V5h1v1H8ZM9 9v1h1V9H9ZM8 9v1h1V9H8ZM7 8v1h1V8H7Z" />
+                            <path d="M9 10v1h1v-1H9ZM8 10v1h1v-1H8ZM11 9v1h1V9h-1ZM10 9v1h1V9h-1ZM9 11v1h1v-1H9ZM13 7v1h1V7h-1ZM12 7v1h1V7h-1ZM14 8v1h1V8h-1ZM13 8v1h1V8h-1ZM12 8v1h1V8h-1ZM11 8v1h1V8h-1ZM10 8v1h1V8h-1ZM15 9v1h1V9h-1ZM14 9v1h1V9h-1ZM13 9v1h1V9h-1ZM12 9v1h1V9h-1ZM15 10v1h1v-1h-1ZM14 10v1h1v-1h-1ZM13 10v1h1v-1h-1ZM12 10v1h1v-1h-1ZM11 10v1h1v-1h-1ZM10 10v1h1v-1h-1ZM15 11v1h1v-1h-1ZM14 11v1h1v-1h-1ZM13 11v1h1v-1h-1ZM12 11v1h1v-1h-1ZM11 11v1h1v-1h-1ZM10 11v1h1v-1h-1ZM15 12v1h1v-1h-1ZM14 12v1h1v-1h-1ZM13 12v1h1v-1h-1ZM12 12v1h1v-1h-1ZM11 12v1h1v-1h-1ZM10 12v1h1v-1h-1ZM15 13v1h1v-1h-1ZM14 13v1h1v-1h-1ZM13 13v1h1v-1h-1ZM12 13v1h1v-1h-1ZM11 13v1h1v-1h-1ZM10 13v1h1v-1h-1ZM15 14v1h1v-1h-1ZM14 14v1h1v-1h-1ZM13 14v1h1v-1h-1ZM12 14v1h1v-1h-1ZM11 14v1h1v-1h-1ZM10 14v1h1v-1h-1ZM15 15v1h1v-1h-1ZM14 15v1h1v-1h-1ZM13 15v1h1v-1h-1ZM12 15v1h1v-1h-1ZM11 15v1h1v-1h-1ZM10 15v1h1v-1h-1Z" />
+                          </svg>
+                          <b className="fs-5">CreateSerialProduct</b>
+                        </Nav.Link>
+
                         <Nav.Link onClick={handleClose} as={Link} to="/Fix" className="my-menu d-flex align-items-center gap-3 p-4">
                           <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" className="bi bi-tools" viewBox="0 0 16 16">
-                            <path d="M1 0 0 1l2.2 3.081a1 1 0 0 0 .815.419h.07a1 1 0 0 1 .708.293L2.8 5.793l1.414-1.414L5.207 5.8a1 1 0 0 1 .293.707v.071a1 1 0 0 0 .419.814L9 8.6l1.4-1.4L8.6 9a1 1 0 0 0-.814.419v.07a1 1 0 0 1-.293.708L6.293 11.4 5.4 10.507l-.793.793 1.893 1.893 1.414-1.414L9.207 10.5a1 1 0 0 1 .708-.293h.071a1 1 0 0 0 .814-.419L14 6.8l-1.4-1.4L15 3 1 0Zm.707 1.293L8.586 2L7 3.586l-.707-.707L1.707 1.293Z" />
+                            <path d="M1 0 0 1l2.2 3.081a1 1 0 0 0 .815.419h.07a1 1 0 0 1 .708.293l2.675 2.675-2.617 2.654A3.003 3.003 0 0 0 0 13a3 3 0 1 0 5.878-.851l2.654-2.617.968.968-.305.914a1 1 0 0 0 .242 1.023l3.27 3.27a.997.997 0 0 0 1.414 0l1.586-1.586a.997.997 0 0 0 0-1.414l-3.27-3.27a1 1 0 0 0-1.023-.242L10.5 9.5l-.96-.96 2.68-2.643A3.005 3.005 0 0 0 16 3c0-.269-.035-.53-.102-.777l-2.14 2.141L12 4l-.364-1.757L13.777.102a3 3 0 0 0-3.675 3.68L7.462 6.46 4.793 3.793a1 1 0 0 1-.293-.707v-.071a1 1 0 0 0-.419-.814L1 0Zm9.646 10.646a.5.5 0 0 1 .708 0l2.914 2.915a.5.5 0 0 1-.707.707l-2.915-2.914a.5.5 0 0 1 0-.708ZM3 11l.471.242.529.026.287.445.445.287.026.529L5 13l-.242.471-.026.529-.445.287-.287.445-.529.026L3 15l-.471-.242L2 14.732l-.287-.445L1.268 14l-.026-.529L1 13l.242-.471.026-.529.445-.287.287-.445.529-.026L3 11Z" />
                           </svg>
                           <b className="fs-5">Fix</b>
                         </Nav.Link>
@@ -353,8 +365,8 @@ function NavbarComponent() {
                 {/* Admin User link - visible if '04' is in roles */}
                 {hasRole('04') && (
                   <Nav.Link onClick={handleClose} as={Link} to="/AdminUser" className="my-menu d-flex align-items-center gap-3 p-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" className="bi bi-tools" viewBox="0 0 16 16">
-                      <path d="M1 0 0 1l2.2 3.081a1 1 0 0 0 .815.419h.07a1 1 0 0 1 .708.293l2.675 2.675-2.617 2.654A3.003 3.003 0 0 0 0 13a3 3 0 1 0 5.878-.851l2.654-2.617.968.968-.305.914a1 1 0 0 0 .242 1.023l3.27 3.27a.997.997 0 0 0 1.414 0l1.586-1.586a.997.997 0 0 0 0-1.414l-3.27-3.27a1 1 0 0 0-1.023-.242L10.5 9.5l-.96-.96 2.68-2.643A3.005 3.005 0 0 0 16 3c0-.269-.035-.53-.102-.777l-2.14 2.141L12 4l-.364-1.757L13.777.102a3 3 0 0 0-3.675 3.68L7.462 6.46 4.793 3.793a1 1 0 0 1-.293-.707v-.071a1 1 0 0 0-.419-.814L1 0Zm9.646 10.646a.5.5 0 0 1 .708 0l2.914 2.915a.5.5 0 0 1-.707.707l-2.915-2.914a.5.5 0 0 1 0-.708ZM3 11l.471.242.529.026.287.445.445.287.026.529L5 13l-.242.471-.026.529-.445.287-.287.445-.529.026L3 15l-.471-.242L2 14.732l-.287-.445L1.268 14l-.026-.529L1 13l.242-.471.026-.529.445-.287.287-.445.529-.026L3 11Z" />
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" className="bi bi-key-fill" viewBox="0 0 16 16">
+                      <path d="M3.5 11.5a3.5 3.5 0 1 1 3.163-5H14L15.5 8 14 9.5l-1-1-1 1-1-1-1 1-1-1-1 1H6.663a3.5 3.5 0 0 1-3.163 2zM2.5 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" />
                     </svg>
                     <b className="fs-5">Admin User</b>
                   </Nav.Link>

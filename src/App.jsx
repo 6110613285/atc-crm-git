@@ -35,7 +35,7 @@ import Bucket from "./Stockpage/Bucket";
 import FixListPage from "./productPage/Fixlist";
 import PcLog from "./productPage/Pclog";
 import AdminUser from "./Stockpage/AdminUser";
-
+import SNproduct from "./productPage/CreateSerial";
 
 import "./app.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -115,6 +115,7 @@ function App() {
             <Route path="/Fix" element={<FixListPage />}></Route>
             <Route path="/AdminUser" element={<AdminUser />}></Route>
             <Route path="/pc-log" element={<PcLog />} />
+            <Route path="/SNproduct" element={<SNproduct />}></Route>
             
             <Route
               path="/SelectedCompany"

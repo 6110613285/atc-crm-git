@@ -305,10 +305,6 @@ function FixListPage() {
       const today = new Date();
       const todayString = today.toISOString().split('T')[0];
       if (dateRef.current) dateRef.current.value = todayString;
-
-
-
-
       if (fixIdRef.current) fixIdRef.current.value = item.fixID || '';
       if (modalRef.current) modalRef.current.value = item.Modal || '';
       if (cpuRef.current) cpuRef.current.value = item.Cpu || '';

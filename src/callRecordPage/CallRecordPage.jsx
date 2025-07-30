@@ -389,7 +389,7 @@ function CallRecordPage() {
 
   useEffect(() => {
     const currentDate = new Date();
-    currentDate.setFullYear(currentDate.getFullYear() - 1);
+    currentDate.setFullYear(currentDate.getFullYear());
     startDate.current.value = currentDate.toISOString().split("T")[0];
     //startDate.current.value = new Date().toISOString().split("T")[0];
     startTime.current.value = "00:00";
